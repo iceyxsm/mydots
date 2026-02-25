@@ -640,22 +640,32 @@ if [ "$MODE" != "minimal" ]; then
     
     # Download wallpapers from Google Drive (only if not already present)
     if command -v gdown &> /dev/null; then
-        # Check if wallpapers already exist
-        if [ -d "$HOME/.config/hypr/wallpapers/live-wallpapers" ] && [ "$(ls -A $HOME/.config/hypr/wallpapers/live-wallpapers/ 2>/dev/null)" ]; then
-            EXISTING_COUNT=$(ls -1 $HOME/.config/hypr/wallpapers/live-wallpapers/ 2>/dev/null | wc -l)
-            echo -e "${GREEN}[*] Live wallpapers already exist ($EXISTING_COUNT found), skipping download${NC}"
+        LIVE_DIR="$HOME/.config/hypr/wallpapers/live-wallpapers"
+        
+        # Check if wallpapers already exist (count files)
+        if [ -d "$LIVE_DIR" ]; then
+            FILE_COUNT=$(find "$LIVE_DIR" -type f 2>/dev/null | wc -l)
+            echo -e "${GREEN}[*] Checking for existing wallpapers in $LIVE_DIR...${NC}"
+            echo -e "  ${GREEN}Found $FILE_COUNT files${NC}"
+        else
+            FILE_COUNT=0
+            echo -e "${GREEN}[*] Wallpaper directory doesn't exist yet${NC}"
+        fi
+        
+        if [ "$FILE_COUNT" -gt 0 ]; then
+            echo -e "${GREEN}[*] Live wallpapers already exist ($FILE_COUNT found), skipping download${NC}"
         else
             echo -e "${GREEN}[*] Downloading live wallpapers from Google Drive...${NC}"
             echo -e "  ${GREEN}This may take a few minutes depending on your internet speed...${NC}"
             GDRIVE_FOLDER="https://drive.google.com/drive/folders/1oS6aUxoW6DGoqzu_S3pVBlgicGPgIoYq"
             
-            # Show progress (remove 2>/dev/null to see output)
-            gdown --folder "$GDRIVE_FOLDER" -O ~/.config/hypr/wallpapers/live-wallpapers/ --remaining-ok
+            # Show progress
+            gdown --folder "$GDRIVE_FOLDER" -O "$LIVE_DIR" --remaining-ok
             
-            if [ $? -eq 0 ]; then
-                # Count downloaded files
-                WALL_COUNT=$(ls -1 ~/.config/hypr/wallpapers/live-wallpapers/ 2>/dev/null | wc -l)
-                echo -e "  ${GREEN}[OK] Downloaded $WALL_COUNT wallpapers successfully!${NC}"
+            # Count downloaded files
+            NEW_COUNT=$(find "$LIVE_DIR" -type f 2>/dev/null | wc -l)
+            if [ "$NEW_COUNT" -gt 0 ]; then
+                echo -e "  ${GREEN}[OK] Downloaded $NEW_COUNT wallpapers successfully!${NC}"
             else
                 echo -e "  ${GREEN}[WARN] Live wallpaper download failed. Will use local themes as fallback.${NC}"
             fi

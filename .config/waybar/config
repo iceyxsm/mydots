@@ -1,26 +1,55 @@
 {
     "layer": "top",
     "position": "top",
-    "height": 30,
+    "height": 32,
+    "spacing": 4,
     "modules-left": ["hyprland/workspaces", "hyprland/window"],
     "modules-center": ["clock"],
-    "modules-right": ["network", "pulseaudio", "battery", "tray"],
+    "modules-right": ["cpu", "memory", "disk", "network", "pulseaudio", "battery", "tray"],
     
     "hyprland/workspaces": {
         "format": "{icon}",
         "on-click": "activate",
         "format-icons": {
-            "1": "1",
-            "2": "2",
-            "3": "3",
-            "4": "4",
-            "5": "5"
+            "1": "",
+            "2": "",
+            "3": "",
+            "4": "",
+            "5": "",
+            "urgent": "",
+            "active": "",
+            "default": ""
         }
     },
     
+    "hyprland/window": {
+        "format": "{}",
+        "max-length": 50
+    },
+    
     "clock": {
-        "format": "{:%H:%M | %a, %d %b}",
-        "tooltip-format": "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>"
+        "format": " {:%H:%M   %a, %d %b}",
+        "tooltip-format": "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>",
+        "format-alt": " {:%Y-%m-%d}"
+    },
+    
+    "cpu": {
+        "format": " {usage}%",
+        "tooltip": true,
+        "interval": 2
+    },
+    
+    "memory": {
+        "format": " {used:0.1f}G/{total:0.1f}G",
+        "tooltip": true,
+        "interval": 2
+    },
+    
+    "disk": {
+        "format": " {percentage_used}%",
+        "path": "/",
+        "tooltip": true,
+        "tooltip-format": "Used: {used} / Total: {total}"
     },
     
     "battery": {
@@ -29,20 +58,34 @@
             "critical": 15
         },
         "format": "{icon} {capacity}%",
+        "format-charging": " {capacity}%",
+        "format-plugged": " {capacity}%",
         "format-icons": ["", "", "", "", ""]
     },
     
     "network": {
-        "format-wifi": " {essid}",
-        "format-ethernet": " Connected",
-        "format-disconnected": "⚠ Disconnected"
+        "format-wifi": " {essid} ({signalStrength}%)",
+        "format-ethernet": " {ipaddr}",
+        "format-disconnected": "⚠ Disconnected",
+        "tooltip-format": "{ifname}: {ipaddr}/{cidr}"
     },
     
     "pulseaudio": {
         "format": "{icon} {volume}%",
         "format-muted": " Muted",
         "format-icons": {
+            "headphone": "",
+            "hands-free": "",
+            "headset": "",
+            "phone": "",
+            "portable": "",
+            "car": "",
             "default": ["", "", ""]
-        }
+        },
+        "on-click": "pavucontrol"
+    },
+    
+    "tray": {
+        "spacing": 10
     }
 }

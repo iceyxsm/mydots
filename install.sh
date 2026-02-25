@@ -228,20 +228,52 @@ for pkg in "${BASE_PACKAGES[@]}"; do
     install_pkg "$pkg" 1
 done
 
-# Install GPU drivers (open source - covers Intel and AMD)
-echo -e "${CYAN}[*] Installing GPU drivers...${NC}"
-GPU_PACKAGES=(
-    "mesa"
-    "lib32-mesa"
-    "vulkan-intel"
-    "vulkan-radeon"
-    "vulkan-icd-loader"
-    "lib32-vulkan-icd-loader"
-)
+# Detect GPU and install only required drivers
+echo -e "${CYAN}[*] Detecting GPU...${NC}"
 
-for pkg in "${GPU_PACKAGES[@]}"; do
-    install_pkg "$pkg"
-done
+HAS_NVIDIA=false
+HAS_INTEL=false
+HAS_AMD=false
+
+# Check for NVIDIA
+if lspci -nn | grep -i 'vga\|3d\|display' | grep -i nvidia &> /dev/null; then
+    HAS_NVIDIA=true
+    echo -e "  ${GREEN}[OK]${NC} NVIDIA GPU detected"
+fi
+
+# Check for Intel
+if lspci -nn | grep -i 'vga\|3d\|display' | grep -i intel &> /dev/null; then
+    HAS_INTEL=true
+    echo -e "  ${GREEN}[OK]${NC} Intel GPU detected"
+fi
+
+# Check for AMD
+if lspci -nn | grep -i 'vga\|3d\|display' | grep -i amd &> /dev/null || \
+   lspci -nn | grep -i 'vga\|3d\|display' | grep -i advanced &> /dev/null; then
+    HAS_AMD=true
+    echo -e "  ${GREEN}[OK]${NC} AMD GPU detected"
+fi
+
+# Install base mesa (always needed)
+echo -e "${CYAN}[*] Installing GPU drivers...${NC}"
+install_pkg "mesa"
+install_pkg "lib32-mesa"
+
+# Install Intel drivers only if Intel GPU detected
+if [ "$HAS_INTEL" = true ]; then
+    echo -e "  ${CYAN}Installing Intel drivers...${NC}"
+    install_pkg "vulkan-intel"
+fi
+
+# Install AMD drivers only if AMD GPU detected
+if [ "$HAS_AMD" = true ]; then
+    echo -e "  ${CYAN}Installing AMD drivers...${NC}"
+    install_pkg "vulkan-radeon"
+fi
+
+# Always install ICD loader
+install_pkg "vulkan-icd-loader"
+install_pkg "lib32-vulkan-icd-loader"
 
 # Check for NVIDIA GPU and auto-install appropriate driver
 echo -e "${CYAN}[*] Checking for NVIDIA GPU...${NC}"

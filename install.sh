@@ -667,8 +667,8 @@ fi
 if [ "$MODE" != "minimal" ]; then
     echo -e "${GREEN}[*] Copying configuration files...${NC}"
     if [ -d ".config/hypr" ]; then
-        # Copy hyprland configs (including our fixed one)
-        cp -r .config/hypr/* ~/.config/hypr/ 2>/dev/null || true
+        # Copy hyprland configs but NOT wallpapers (already handled separately)
+        find .config/hypr -type f -name "*.conf" -exec cp {} ~/.config/hypr/ \; 2>/dev/null
         echo -e "  ${GREEN}[OK] Hyprland configs copied${NC}"
     fi
     if [ -d ".config/waybar" ]; then
@@ -695,18 +695,31 @@ if [ "$MODE" != "minimal" ]; then
     
     # Check for live wallpapers first
     echo -e "  ${GREEN}Checking for live wallpapers...${NC}"
-    if [ -d "$HOME/.config/hypr/wallpapers/live-wallpapers" ] && [ "$(ls -A $HOME/.config/hypr/wallpapers/live-wallpapers/ 2>/dev/null)" ]; then
-        LIVE_WALL=$(ls $HOME/.config/hypr/wallpapers/live-wallpapers/ | head -n1)
-        DEFAULT_WALLPAPER="$HOME/.config/hypr/wallpapers/live-wallpapers/$LIVE_WALL"
+    LIVE_DIR="$HOME/.config/hypr/wallpapers/live-wallpapers"
+    DARK_DIR="$HOME/.config/hypr/wallpapers/dark-theme"
+    
+    # Debug: show what's in the folders
+    if [ -d "$LIVE_DIR" ]; then
+        LIVE_COUNT=$(ls -1 "$LIVE_DIR" 2>/dev/null | wc -l)
+        echo -e "    ${GREEN}Found $LIVE_COUNT files in live-wallpapers/${NC}"
+    fi
+    if [ -d "$DARK_DIR" ]; then
+        DARK_COUNT=$(ls -1 "$DARK_DIR" 2>/dev/null | wc -l)
+        echo -e "    ${GREEN}Found $DARK_COUNT files in dark-theme/${NC}"
+    fi
+    
+    if [ -d "$LIVE_DIR" ] && [ "$(ls -A "$LIVE_DIR" 2>/dev/null)" ]; then
+        LIVE_WALL=$(ls "$LIVE_DIR" | head -n1)
+        DEFAULT_WALLPAPER="$LIVE_DIR/$LIVE_WALL"
         echo -e "  ${GREEN}[OK] Using LIVE wallpaper: $LIVE_WALL${NC}"
     # Then check for dark theme wallpapers
-    elif [ -f "$HOME/.config/hypr/wallpapers/dark-theme/dark-wall1.jpg" ]; then
-        DEFAULT_WALLPAPER="$HOME/.config/hypr/wallpapers/dark-theme/dark-wall1.jpg"
+    elif [ -f "$DARK_DIR/dark-wall1.jpg" ]; then
+        DEFAULT_WALLPAPER="$DARK_DIR/dark-wall1.jpg"
         echo -e "  ${GREEN}[OK] Using DARK THEME wallpaper: dark-wall1.jpg${NC}"
     # Last resort - check if any dark theme wallpaper exists
-    elif [ -d "$HOME/.config/hypr/wallpapers/dark-theme" ] && [ "$(ls -A $HOME/.config/hypr/wallpapers/dark-theme/ 2>/dev/null)" ]; then
-        DARK_WALL=$(ls $HOME/.config/hypr/wallpapers/dark-theme/ | head -n1)
-        DEFAULT_WALLPAPER="$HOME/.config/hypr/wallpapers/dark-theme/$DARK_WALL"
+    elif [ -d "$DARK_DIR" ] && [ "$(ls -A "$DARK_DIR" 2>/dev/null)" ]; then
+        DARK_WALL=$(ls "$DARK_DIR" | head -n1)
+        DEFAULT_WALLPAPER="$DARK_DIR/$DARK_WALL"
         echo -e "  ${GREEN}[OK] Using DARK THEME wallpaper: $DARK_WALL${NC}"
     else
         echo -e "  ${GREEN}[WARN] No wallpapers found! Using solid color.${NC}"

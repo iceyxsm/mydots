@@ -413,7 +413,6 @@ done
 echo -e "${GREEN}[*] Installing additional tools...${NC}"
 TOOLS=(
     "btop"
-    "neofetch"
     "thunar"
     "gvfs"
     "gvfs-mtp"
@@ -584,6 +583,9 @@ if [ "$MODE" != "minimal" ] || ! command -v yay &> /dev/null; then
         
         echo -e "  ${GREEN}Installing cliphist from AUR...${NC}"
         yay -S --noconfirm cliphist 2>/dev/null || echo -e "  ${GREEN}[WARN] Failed to install cliphist${NC}"
+        
+        echo -e "  ${GREEN}Installing neofetch from AUR...${NC}"
+        yay -S --noconfirm neofetch 2>/dev/null || echo -e "  ${GREEN}[WARN] Failed to install neofetch${NC}"
         
         echo -e "${GREEN}[*] Installing SDDM Astronaut theme (AUR)...${NC}"
         yay -S --noconfirm sddm-astronaut-theme 2>/dev/null || echo -e "  ${GREEN}[WARN] sddm-astronaut-theme install failed${NC}"

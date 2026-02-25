@@ -627,7 +627,12 @@ fi
 if [ "$MODE" != "minimal" ]; then
     echo -e "${GREEN}[*] Installing gdown for wallpaper downloads...${NC}"
     if ! command -v gdown &> /dev/null; then
-        pip install --user gdown || echo -e "  ${GREEN}[WARN] Failed to install gdown${NC}"
+        # Install pipx first (recommended way on Arch)
+        install_pkg "python-pipx"
+        # Use pipx to install gdown in isolated environment
+        pipx install gdown 2>/dev/null || \
+            pip install --user --break-system-packages gdown 2>/dev/null || \
+            echo -e "  ${GREEN}[WARN] Failed to install gdown${NC}"
         export PATH="$HOME/.local/bin:$PATH"
     else
         echo -e "  ${GREEN}[OK] gdown already installed${NC}"

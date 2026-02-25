@@ -1,9 +1,5 @@
 #!/bin/bash
 
-# Cyberpunk Theme Installer
-# Made by iceyxsm
-# Modes: --finstall (fresh), -finstall (full/default), -minstall (minimal)
-
 # Request sudo access FIRST (before anything else)
 if ! sudo -v 2>/dev/null; then
     echo "[ERROR] Sudo access required. Please run: sudo ./install.sh"
@@ -67,27 +63,27 @@ for arg in "$@"; do
     esac
 done
 
-echo -e "${PURPLE}========================================${NC}"
-echo -e "${PINK}    Cyberpunk Theme Installer${NC}"
-echo -e "${CYAN}       Made by iceyxsm${NC}"
-echo -e "${CYAN}       Mode: ${MODE}${NC}"
-echo -e "${PURPLE}========================================${NC}"
+echo -e "${GREEN}========================================${NC}"
+echo -e "${GREEN}    Cyberpunk Theme Installer${NC}"
+echo -e "${GREEN}       Made by iceyxsm${NC}"
+echo -e "${GREEN}       Mode: ${MODE}${NC}"
+echo -e "${GREEN}========================================${NC}"
 echo ""
 
 # Check if running as root (don't allow)
 if [ "$EUID" -eq 0 ]; then 
-    echo -e "${RED}[!] Please do not run this script as root${NC}"
+    echo -e "${GREEN}[!] Please do not run this script as root${NC}"
     exit 1
 fi
 
 # FRESH INSTALL MODE - NUCLEAR OPTION
 if [ "$MODE" = "fresh" ]; then
-    echo -e "${RED}========================================${NC}"
-    echo -e "${RED}  WARNING: FRESH INSTALL MODE${NC}"
-    echo -e "${RED}  This will DELETE all configs and packages!${NC}"
-    echo -e "${RED}========================================${NC}"
+    echo -e "${GREEN}========================================${NC}"
+    echo -e "${GREEN}  WARNING: FRESH INSTALL MODE${NC}"
+    echo -e "${GREEN}  This will DELETE all configs and packages!${NC}"
+    echo -e "${GREEN}========================================${NC}"
     echo ""
-    echo -e "${YELLOW}This will:${NC}"
+    echo -e "${GREEN}This will:${NC}"
     echo "  - Remove all packages except: base, git, pacman, yay"
     echo "  - Delete all dotfiles in ~/.config/"
     echo "  - Delete wallpapers and themes"
@@ -99,29 +95,29 @@ if [ "$MODE" = "fresh" ]; then
         exit 0
     fi
     
-    echo -e "${CYAN}[*] FRESH INSTALL: Removing packages...${NC}"
+    echo -e "${GREEN}[*] FRESH INSTALL: Removing packages...${NC}"
     
     # Get list of explicitly installed packages (excluding base and essential)
-    echo -e "  ${CYAN}Analyzing installed packages...${NC}"
+    echo -e "  ${GREEN}Analyzing installed packages...${NC}"
     
     # Create list of packages to keep
     KEEP_PKGS="base base-devel linux linux-firmware pacman git curl wget yay"
     
     # Remove all packages not in keep list
-    echo -e "  ${YELLOW}Removing non-essential packages...${NC}"
+    echo -e "  ${GREEN}Removing non-essential packages...${NC}"
     pacman -Qeq | while read pkg; do
         if ! echo "$KEEP_PKGS" | grep -qw "$pkg"; then
-            echo -e "  ${CYAN}Removing: $pkg${NC}"
+            echo -e "  ${GREEN}Removing: $pkg${NC}"
             sudo pacman -Rns --noconfirm "$pkg" 2>/dev/null || true
         fi
     done
     
-    echo -e "${CYAN}[*] FRESH INSTALL: Cleaning configs...${NC}"
+    echo -e "${GREEN}[*] FRESH INSTALL: Cleaning configs...${NC}"
     # Remove all .config except essential
     for dir in ~/.config/*; do
         [ -d "$dir" ] || continue
         dir_name=$(basename "$dir")
-        echo -e "  ${CYAN}Removing: ~/.config/$dir_name${NC}"
+        echo -e "  ${GREEN}Removing: ~/.config/$dir_name${NC}"
         rm -rf "$dir"
     done
     
@@ -129,26 +125,26 @@ if [ "$MODE" = "fresh" ]; then
     rm -rf ~/.local/share/{applications,flatpak} 2>/dev/null || true
     rm -rf ~/.themes ~/.icons 2>/dev/null || true
     
-    echo -e "${GREEN}[OK]${NC} System cleaned. Installing fresh..."
+    echo -e "${GREEN}[OK] System cleaned. Installing fresh...${NC}"
     echo ""
 fi
 
 # Check for multilib support (required for lib32 packages)
-echo -e "${CYAN}[*] Checking system configuration...${NC}"
+echo -e "${GREEN}[*] Checking system configuration...${NC}"
 if ! grep -q "^\[multilib\]" /etc/pacman.conf; then
-    echo -e "  ${YELLOW}[WARN]${NC} Multilib not enabled - required for 32-bit libraries"
-    echo -e "  ${CYAN}[*] Enabling multilib...${NC}"
+    echo -e "  ${GREEN}[WARN] Multilib not enabled - required for 32-bit libraries${NC}"
+    echo -e "  ${GREEN}[*] Enabling multilib...${NC}"
     sudo sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/s/#\[multilib\]/[multilib]/' /etc/pacman.conf
     sudo sed -i '/^\[multilib\]$/,/^#Include = \/etc\/pacman.d\/mirrorlist$/s/^#Include = \/etc\/pacman.d\/mirrorlist$/Include = \/etc\/pacman.d\/mirrorlist/' /etc/pacman.conf
     sudo pacman -Syu --noconfirm
-    echo -e "  ${GREEN}[OK]${NC} Multilib enabled"
+    echo -e "  ${GREEN}[OK] Multilib enabled${NC}"
 fi
 
 # Check for base-devel (required for makepkg/AUR)
 if ! pacman -Qg base-devel &> /dev/null; then
-    echo -e "  ${CYAN}[*] Installing base-devel (required for AUR)...${NC}"
+    echo -e "  ${GREEN}[*] Installing base-devel (required for AUR)...${NC}"
     sudo pacman -S --needed --noconfirm base-devel
-    echo -e "  ${GREEN}[OK]${NC} base-devel installed"
+    echo -e "  ${GREEN}[OK] base-devel installed${NC}"
 fi
 
 # Backup existing configs (skip for minimal mode, always do for fresh)
@@ -156,11 +152,11 @@ if [ "$MODE" != "minimal" ]; then
     backup_dir="$HOME/.config_backup_$(date +%Y%m%d_%H%M%S)"
     mkdir -p "$backup_dir"
     
-    echo -e "${CYAN}[*] Backing up existing configs...${NC}"
+    echo -e "${GREEN}[*] Backing up existing configs...${NC}"
     for dir in hypr waybar kitty btop neofetch mako; do
         if [ -d "$HOME/.config/$dir" ]; then
             mv "$HOME/.config/$dir" "$backup_dir/"
-            echo -e "  ${GREEN}[OK]${NC} Backed up $dir"
+            echo -e "  ${GREEN}[OK] Backed up $dir${NC}"
         fi
     done
 fi
@@ -189,9 +185,9 @@ if [ -d ".config/hypr/wallpapers/light-theme" ]; then
 fi
 
 # Update system first (always do this)
-echo -e "${CYAN}[*] Updating system...${NC}"
+echo -e "${GREEN}[*] Updating system...${NC}"
 sudo pacman -Syu --noconfirm || {
-    echo -e "${RED}[!] System update failed${NC}"
+    echo -e "${GREEN}[!] System update failed${NC}"
     exit 1
 }
 
@@ -201,27 +197,27 @@ install_pkg() {
     local required="${2:-0}"
     
     if [ "$MODE" = "minimal" ] && pacman -Qi "$pkg" &> /dev/null; then
-        echo -e "  ${GREEN}[OK]${NC} $pkg already installed (skipping in minimal mode)"
+        echo -e "  ${GREEN}[OK] $pkg already installed (skipping in minimal mode)${NC}"
         return 0
     fi
     
     if ! pacman -Qi "$pkg" &> /dev/null; then
-        echo -e "  ${CYAN}Installing $pkg...${NC}"
+        echo -e "  ${GREEN}Installing $pkg...${NC}"
         sudo pacman -S --needed --noconfirm "$pkg" || {
             if [ "$required" = "1" ]; then
-                echo -e "  ${RED}[FAIL]${NC} Required package $pkg failed"
+                echo -e "  ${GREEN}[FAIL] Required package $pkg failed${NC}"
                 return 1
             else
-                echo -e "  ${YELLOW}[WARN]${NC} Failed to install $pkg, continuing..."
+                echo -e "  ${GREEN}[WARN] Failed to install $pkg, continuing...${NC}"
             fi
         }
     else
-        echo -e "  ${GREEN}[OK]${NC} $pkg already installed"
+        echo -e "  ${GREEN}[OK] $pkg already installed${NC}"
     fi
 }
 
 # Install base packages for Hyprland
-echo -e "${CYAN}[*] Installing base Hyprland packages...${NC}"
+echo -e "${GREEN}[*] Installing base Hyprland packages...${NC}"
 BASE_PACKAGES=(
     "hyprland"
     "hyprpaper"
@@ -246,7 +242,7 @@ for pkg in "${BASE_PACKAGES[@]}"; do
 done
 
 # Detect GPU and install only required drivers
-echo -e "${CYAN}[*] Detecting GPU...${NC}"
+echo -e "${GREEN}[*] Detecting GPU...${NC}"
 
 HAS_NVIDIA=false
 HAS_INTEL=false
@@ -255,36 +251,36 @@ HAS_AMD=false
 # Check for NVIDIA
 if lspci -nn | grep -i 'vga\|3d\|display' | grep -i nvidia &> /dev/null; then
     HAS_NVIDIA=true
-    echo -e "  ${GREEN}[OK]${NC} NVIDIA GPU detected"
+    echo -e "  ${GREEN}[OK] NVIDIA GPU detected${NC}"
 fi
 
 # Check for Intel
 if lspci -nn | grep -i 'vga\|3d\|display' | grep -i intel &> /dev/null; then
     HAS_INTEL=true
-    echo -e "  ${GREEN}[OK]${NC} Intel GPU detected"
+    echo -e "  ${GREEN}[OK] Intel GPU detected${NC}"
 fi
 
 # Check for AMD
 if lspci -nn | grep -i 'vga\|3d\|display' | grep -i amd &> /dev/null || \
    lspci -nn | grep -i 'vga\|3d\|display' | grep -i advanced &> /dev/null; then
     HAS_AMD=true
-    echo -e "  ${GREEN}[OK]${NC} AMD GPU detected"
+    echo -e "  ${GREEN}[OK] AMD GPU detected${NC}"
 fi
 
 # Install base mesa (always needed)
-echo -e "${CYAN}[*] Installing GPU drivers...${NC}"
+echo -e "${GREEN}[*] Installing GPU drivers...${NC}"
 install_pkg "mesa"
 install_pkg "lib32-mesa"
 
 # Install Intel drivers only if Intel GPU detected
 if [ "$HAS_INTEL" = true ]; then
-    echo -e "  ${CYAN}Installing Intel drivers...${NC}"
+    echo -e "  ${GREEN}Installing Intel drivers...${NC}"
     install_pkg "vulkan-intel"
 fi
 
 # Install AMD drivers only if AMD GPU detected
 if [ "$HAS_AMD" = true ]; then
-    echo -e "  ${CYAN}Installing AMD drivers...${NC}"
+    echo -e "  ${GREEN}Installing AMD drivers...${NC}"
     install_pkg "vulkan-radeon"
 fi
 
@@ -293,15 +289,14 @@ install_pkg "vulkan-icd-loader"
 install_pkg "lib32-vulkan-icd-loader"
 
 # Check for NVIDIA GPU and auto-install appropriate driver
-echo -e "${CYAN}[*] Checking for NVIDIA GPU...${NC}"
-if lspci -nn | grep -i 'vga\|3d\|display' | grep -i nvidia &> /dev/null; then
-    echo -e "  ${GREEN}[OK]${NC} NVIDIA GPU detected!"
+if [ "$HAS_NVIDIA" = true ]; then
+    echo -e "${GREEN}[*] Installing NVIDIA drivers...${NC}"
     
     # Extract PCI ID
     PCI_ID=$(lspci -nn | grep -i 'vga\|3d\|display' | grep -i nvidia | grep -oP '\[10de:\K[0-9a-f]+' | head -n1 | tr '[:lower:]' '[:upper:]')
     
     if [ -n "$PCI_ID" ]; then
-        echo -e "  ${CYAN}PCI ID: ${PCI_ID}${NC}"
+        echo -e "  ${GREEN}PCI ID: ${PCI_ID}${NC}"
         
         # Determine driver based on PCI ID
         case "$PCI_ID" in
@@ -354,35 +349,35 @@ if lspci -nn | grep -i 'vga\|3d\|display' | grep -i nvidia &> /dev/null; then
                 ;;
         esac
         
-        echo -e "  ${GREEN}[OK]${NC} Detected: ${DESC}"
-        echo -e "  ${CYAN}[*] Installing ${DRIVER}...${NC}"
+        echo -e "  ${GREEN}[OK] Detected: ${DESC}${NC}"
+        echo -e "  ${GREEN}[*] Installing ${DRIVER}...${NC}"
         
         # Check if already installed (minimal mode)
         if [ "$MODE" = "minimal" ] && pacman -Qi "$DRIVER" &> /dev/null; then
-            echo -e "  ${GREEN}[OK]${NC} ${DRIVER} already installed (minimal mode)"
+            echo -e "  ${GREEN}[OK] ${DRIVER} already installed (minimal mode)${NC}"
         else
             # Blacklist nouveau
             if lsmod | grep -q nouveau 2>/dev/null; then
-                echo -e "  ${CYAN}[*] Blacklisting nouveau...${NC}"
+                echo -e "  ${GREEN}[*] Blacklisting nouveau...${NC}"
                 echo "blacklist nouveau" | sudo tee /etc/modprobe.d/blacklist-nouveau.conf > /dev/null
                 echo "options nouveau modeset=0" | sudo tee -a /etc/modprobe.d/blacklist-nouveau.conf > /dev/null
             fi
             
             # Install driver
             if [ "$AUR" = "1" ]; then
-                echo -e "  ${YELLOW}[WARN]${NC} Legacy GPU - requires AUR package"
+                echo -e "  ${GREEN}[WARN] Legacy GPU - requires AUR package${NC}"
                 if command -v yay &> /dev/null; then
-                    yay -S --noconfirm "$DRIVER" 2>/dev/null || echo -e "  ${YELLOW}[WARN]${NC} Failed to install $DRIVER"
+                    yay -S --noconfirm "$DRIVER" 2>/dev/null || echo -e "  ${GREEN}[WARN] Failed to install $DRIVER${NC}"
                 else
-                    echo -e "  ${YELLOW}[WARN]${NC} yay not available, skipping NVIDIA driver"
+                    echo -e "  ${GREEN}[WARN] yay not available, skipping NVIDIA driver${NC}"
                 fi
             else
-                sudo pacman -S --needed --noconfirm "$DRIVER" nvidia-utils lib32-nvidia-utils 2>/dev/null || echo -e "  ${YELLOW}[WARN]${NC} Failed to install NVIDIA driver"
+                sudo pacman -S --needed --noconfirm "$DRIVER" nvidia-utils lib32-nvidia-utils 2>/dev/null || echo -e "  ${GREEN}[WARN] Failed to install NVIDIA driver${NC}"
             fi
             
             # Configure if installed
             if pacman -Qi "$DRIVER" &> /dev/null 2>&1 || [ "$DRIVER" = "nvidia-dkms" -a -d "/usr/lib/nvidia" ]; then
-                echo -e "  ${CYAN}[*] Configuring NVIDIA...${NC}"
+                echo -e "  ${GREEN}[*] Configuring NVIDIA...${NC}"
                 # Early module loading
                 if ! grep -q "nvidia" /etc/mkinitcpio.conf 2>/dev/null; then
                     sudo sed -i 's/MODULES=()/MODULES=(nvidia nvidia_modeset nvidia_uvm nvidia_drm)/' /etc/mkinitcpio.conf
@@ -392,18 +387,16 @@ if lspci -nn | grep -i 'vga\|3d\|display' | grep -i nvidia &> /dev/null; then
                     echo "options nvidia_drm modeset=1" | sudo tee /etc/modprobe.d/nvidia.conf > /dev/null
                 fi
                 sudo mkinitcpio -P 2>/dev/null || true
-                echo -e "  ${GREEN}[OK]${NC} NVIDIA driver installed and configured"
+                echo -e "  ${GREEN}[OK] NVIDIA driver installed and configured${NC}"
             fi
         fi
     else
-        echo -e "  ${YELLOW}[WARN]${NC} Could not detect PCI ID, skipping NVIDIA driver"
+        echo -e "  ${GREEN}[WARN] Could not detect PCI ID, skipping NVIDIA driver${NC}"
     fi
-else
-    echo -e "  ${GREEN}[OK]${NC} No NVIDIA GPU detected - using Mesa drivers"
 fi
 
 # Install PipeWire audio stack
-echo -e "${CYAN}[*] Installing PipeWire audio stack...${NC}"
+echo -e "${GREEN}[*] Installing PipeWire audio stack...${NC}"
 AUDIO_PACKAGES=(
     "pipewire"
     "pipewire-audio"
@@ -417,7 +410,7 @@ for pkg in "${AUDIO_PACKAGES[@]}"; do
 done
 
 # Install additional tools
-echo -e "${CYAN}[*] Installing additional tools...${NC}"
+echo -e "${GREEN}[*] Installing additional tools...${NC}"
 TOOLS=(
     "btop"
     "neofetch"
@@ -448,7 +441,7 @@ for pkg in "${TOOLS[@]}"; do
 done
 
 # Install fonts
-echo -e "${CYAN}[*] Installing fonts...${NC}"
+echo -e "${GREEN}[*] Installing fonts...${NC}"
 REPO_FONTS=(
     "ttf-font-awesome"
     "noto-fonts"
@@ -460,14 +453,14 @@ for font in "${REPO_FONTS[@]}"; do
 done
 
 # Enable services
-echo -e "${CYAN}[*] Enabling system services...${NC}"
-sudo systemctl enable --now bluetooth.service 2>/dev/null || echo -e "  ${YELLOW}[WARN]${NC} Bluetooth service failed"
-sudo systemctl enable --now NetworkManager.service 2>/dev/null || echo -e "  ${YELLOW}[WARN]${NC} NetworkManager failed"
+echo -e "${GREEN}[*] Enabling system services...${NC}"
+sudo systemctl enable --now bluetooth.service 2>/dev/null || echo -e "  ${GREEN}[WARN] Bluetooth service failed${NC}"
+sudo systemctl enable --now NetworkManager.service 2>/dev/null || echo -e "  ${GREEN}[WARN] NetworkManager failed${NC}"
 
 # Enable SDDM display manager
-echo -e "${CYAN}[*] Enabling SDDM display manager...${NC}"
-sudo systemctl enable sddm.service 2>/dev/null || echo -e "  ${YELLOW}[WARN]${NC} SDDM enable failed"
-echo -e "  ${GREEN}[OK]${NC} SDDM configured"
+echo -e "${GREEN}[*] Enabling SDDM display manager...${NC}"
+sudo systemctl enable sddm.service 2>/dev/null || echo -e "  ${GREEN}[WARN] SDDM enable failed${NC}"
+echo -e "  ${GREEN}[OK] SDDM configured${NC}"
 
 # Verify hyprland.desktop exists
 if [ ! -f "/usr/share/wayland-sessions/hyprland.desktop" ]; then
@@ -487,165 +480,172 @@ EOF
     echo -e "  ${GREEN}[OK] hyprland.desktop created${NC}"
 fi
 
-# Fix SDDM to use correct session file
+# Create SDDM session fix - THIS IS CRITICAL FOR LOGIN LOOP
 echo -e "${GREEN}[*] Creating SDDM session fix...${NC}"
 sudo mkdir -p /etc/sddm.conf.d
-cat | sudo tee /etc/sddm.conf.d/10-wayland.conf > /dev/null << 'EOF'
+
+# Remove old configs that might conflict
+sudo rm -f /etc/sddm.conf.d/hyprland.conf 2>/dev/null || true
+sudo rm -f /etc/sddm.conf.d/10-wayland.conf 2>/dev/null || true
+
+# Create proper SDDM config
+cat | sudo tee /etc/sddm.conf.d/99-hyprland.conf > /dev/null << 'EOF'
 [General]
-DisplayServer=wayland
-GreeterEnvironment=QT_QPA_PLATFORM=wayland
-
-[Wayland]
-CompositorCommand=Hyprland
-EOF
-
-# Create wrapper script to debug Hyprland startup
-echo -e "${GREEN}[*] Creating Hyprland debug wrapper...${NC}"
-sudo tee /usr/local/bin/hyprland-launch.sh > /dev/null << 'EOF'
-#!/bin/bash
-# Hyprland launch wrapper with logging
-
-export WLR_NO_HARDWARE_CURSORS=1
-export WLR_RENDERER_ALLOW_SOFTWARE=1
-
-# NVIDIA specific (if applicable)
-if [ -d /proc/driver/nvidia ]; then
-    export WLR_NO_HARDWARE_CURSORS=1
-    export __GLX_VENDOR_LIBRARY_NAME=nvidia
-    export GBM_BACKEND=nvidia-drm
-fi
-
-# Log file
-LOG_FILE="$HOME/.local/share/hyprland/hyprland-launch.log"
-mkdir -p "$(dirname "$LOG_FILE")"
-
-echo "$(date): Starting Hyprland..." >> "$LOG_FILE"
-echo "$(date): Display: $DISPLAY" >> "$LOG_FILE"
-echo "$(date): Wayland Display: $WAYLAND_DISPLAY" >> "$LOG_FILE"
-
-exec /usr/bin/Hyprland "$@" 2>&1 | tee -a "$LOG_FILE"
-EOF
-sudo chmod +x /usr/local/bin/hyprland-launch.sh
-
-# Configure SDDM to use Hyprland as default session
-echo -e "${GREEN}[*] Configuring SDDM default session...${NC}"
-sudo mkdir -p /etc/sddm.conf.d
-
-# Main SDDM config
-cat | sudo tee /etc/sddm.conf.d/hyprland.conf > /dev/null << 'EOF'
-[Autologin]
-Session=hyprland.desktop
-
-[General]
+DisplayServer=x11
+GreeterEnvironment=QT_QPA_PLATFORM=xcb
 DefaultSession=hyprland.desktop
-DisplayServer=wayland
 
 [Theme]
 Current=sddm-astronaut-theme
 EOF
 
-echo -e "  ${GREEN}[OK] Hyprland set as default session${NC}"
+echo -e "  ${GREEN}[OK] SDDM config created (using X11 backend for stability)${NC}"
+
+# Create Hyprland environment file with NVIDIA fixes and display fixes
+echo -e "${GREEN}[*] Creating Hyprland environment config...${NC}"
+mkdir -p ~/.config/hypr
+sudo mkdir -p /etc/environment.d
+
+# For user
+cat > ~/.config/hypr/environment.conf << 'EOF'
+# NVIDIA fixes
+WLR_NO_HARDWARE_CURSORS=1
+WLR_RENDERER_ALLOW_SOFTWARE=1
+
+# Display fixes - force proper rendering
+WLR_DRM_NO_ATOMIC=1
+WLR_DRM_NO_MODIFIERS=1
+
+# Session type
+XDG_SESSION_TYPE=wayland
+XDG_CURRENT_DESKTOP=Hyprland
+
+# QT/Wayland
+QT_QPA_PLATFORM=wayland
+QT_QPA_PLATFORMTHEME=qt5ct
+
+# SDL
+SDL_VIDEODRIVER=wayland
+
+# Mozilla
+MOZ_ENABLE_WAYLAND=1
+
+# For NVIDIA cards
+if [ -d /proc/driver/nvidia ]; then
+    export __GLX_VENDOR_LIBRARY_NAME=nvidia
+    export GBM_BACKEND=nvidia-drm
+    export __GL_GSYNC_ALLOWED=0
+    export __GL_VRR_ALLOWED=0
+fi
+EOF
+
+# For system
+cat | sudo tee /etc/environment.d/99-hyprland.conf > /dev/null << 'EOF'
+WLR_NO_HARDWARE_CURSORS=1
+WLR_RENDERER_ALLOW_SOFTWARE=1
+WLR_DRM_NO_ATOMIC=1
+WLR_DRM_NO_MODIFIERS=1
+XDG_SESSION_TYPE=wayland
+QT_QPA_PLATFORM=wayland
+EOF
+
+echo -e "  ${GREEN}[OK] Environment config created${NC}"
 
 # Configure NetworkManager WiFi backend
-echo -e "${CYAN}[*] Configuring NetworkManager WiFi backend...${NC}"
+echo -e "${GREEN}[*] Configuring NetworkManager WiFi backend...${NC}"
 sudo mkdir -p /etc/NetworkManager/NetworkManager.conf
 echo -e "[device]\nwifi.backend=iwd" | sudo tee /etc/NetworkManager/NetworkManager.conf.d/wifi-backend.conf > /dev/null
-echo -e "  ${GREEN}[OK]${NC} Using iwd for WiFi (faster connection)"
+echo -e "  ${GREEN}[OK] Using iwd for WiFi (faster connection)${NC}"
 
 # Install yay AUR helper (if not in minimal mode or yay missing)
 if [ "$MODE" != "minimal" ] || ! command -v yay &> /dev/null; then
-    echo -e "${CYAN}[*] Installing yay AUR helper...${NC}"
+    echo -e "${GREEN}[*] Installing yay AUR helper...${NC}"
     if ! command -v yay &> /dev/null; then
         YAY_BUILD_DIR="$(mktemp -d)"
         git clone https://aur.archlinux.org/yay.git "$YAY_BUILD_DIR" || {
-            echo -e "${YELLOW}[WARN]${NC} Failed to clone yay, continuing without AUR packages..."
+            echo -e "${GREEN}[WARN] Failed to clone yay, continuing without AUR packages...${NC}"
             YAY_FAILED=1
         }
         if [ -z "$YAY_FAILED" ]; then
             (cd "$YAY_BUILD_DIR" && makepkg -si --noconfirm) || {
-                echo -e "${YELLOW}[WARN]${NC} Failed to build yay, continuing without AUR packages..."
+                echo -e "${GREEN}[WARN] Failed to build yay, continuing without AUR packages...${NC}"
                 YAY_FAILED=1
             }
         fi
         rm -rf "$YAY_BUILD_DIR"
     else
-        echo -e "  ${GREEN}[OK]${NC} yay already installed"
+        echo -e "  ${GREEN}[OK] yay already installed${NC}"
     fi
     
     # Install AUR packages if yay available
     if [ -z "$YAY_FAILED" ] && command -v yay &> /dev/null; then
-        echo -e "  ${CYAN}Installing nerd-fonts-jetbrains-mono from AUR...${NC}"
-        yay -S --noconfirm nerd-fonts-jetbrains-mono 2>/dev/null || echo -e "  ${YELLOW}[WARN]${NC} Failed to install JetBrains Nerd Font"
+        echo -e "  ${GREEN}Installing nerd-fonts-jetbrains-mono from AUR...${NC}"
+        yay -S --noconfirm nerd-fonts-jetbrains-mono 2>/dev/null || echo -e "  ${GREEN}[WARN] Failed to install JetBrains Nerd Font${NC}"
         
-        echo -e "  ${CYAN}Installing cliphist from AUR...${NC}"
-        yay -S --noconfirm cliphist 2>/dev/null || echo -e "  ${YELLOW}[WARN]${NC} Failed to install cliphist"
+        echo -e "  ${GREEN}Installing cliphist from AUR...${NC}"
+        yay -S --noconfirm cliphist 2>/dev/null || echo -e "  ${GREEN}[WARN] Failed to install cliphist${NC}"
         
-        echo -e "${CYAN}[*] Installing SDDM Astronaut theme (AUR)...${NC}"
-        yay -S --noconfirm sddm-astronaut-theme 2>/dev/null || echo -e "  ${YELLOW}[WARN]${NC} sddm-astronaut-theme install failed"
+        echo -e "${GREEN}[*] Installing SDDM Astronaut theme (AUR)...${NC}"
+        yay -S --noconfirm sddm-astronaut-theme 2>/dev/null || echo -e "  ${GREEN}[WARN] sddm-astronaut-theme install failed${NC}"
     fi
 fi
 
 # Enable PipeWire services
-echo -e "${CYAN}[*] Enabling PipeWire audio services...${NC}"
+echo -e "${GREEN}[*] Enabling PipeWire audio services...${NC}"
 systemctl --user enable pipewire.service 2>/dev/null || true
 systemctl --user enable pipewire-pulse.service 2>/dev/null || true
 systemctl --user enable wireplumber.service 2>/dev/null || true
-echo -e "  ${GREEN}[OK]${NC} PipeWire services enabled for user"
+echo -e "  ${GREEN}[OK] PipeWire services enabled for user${NC}"
 
 # Configure SDDM theme (only if astronaut theme was installed)
 if [ -d "/usr/share/sddm/themes/sddm-astronaut-theme" ]; then
-    echo -e "${CYAN}[*] Configuring SDDM theme...${NC}"
-    sudo tee /etc/sddm.conf.d/theme.conf > /dev/null << EOF
-[Theme]
-Current=sddm-astronaut-theme
-EOF
-    echo -e "  ${GREEN}[OK]${NC} Astronaut theme configured"
+    echo -e "${GREEN}[*] SDDM Astronaut theme installed${NC}"
 else
-    echo -e "  ${YELLOW}[WARN]${NC} Astronaut theme not found, using default SDDM theme"
+    echo -e "  ${GREEN}[WARN] Astronaut theme not found, using default SDDM theme${NC}"
 fi
 
 # Install gdown for wallpaper downloads
 if [ "$MODE" != "minimal" ]; then
-    echo -e "${CYAN}[*] Installing gdown for wallpaper downloads...${NC}"
+    echo -e "${GREEN}[*] Installing gdown for wallpaper downloads...${NC}"
     if ! command -v gdown &> /dev/null; then
-        pip install --user gdown || echo -e "  ${YELLOW}[WARN]${NC} Failed to install gdown"
+        pip install --user gdown || echo -e "  ${GREEN}[WARN] Failed to install gdown${NC}"
         export PATH="$HOME/.local/bin:$PATH"
     else
-        echo -e "  ${GREEN}[OK]${NC} gdown already installed"
+        echo -e "  ${GREEN}[OK] gdown already installed${NC}"
     fi
     
     # Download wallpapers from Google Drive
     if command -v gdown &> /dev/null; then
-        echo -e "${CYAN}[*] Downloading live wallpapers from Google Drive...${NC}"
+        echo -e "${GREEN}[*] Downloading live wallpapers from Google Drive...${NC}"
         GDRIVE_FOLDER="https://drive.google.com/drive/folders/1oS6aUxoW6DGoqzu_S3pVBlgicGPgIoYq"
         gdown --folder "$GDRIVE_FOLDER" -O ~/.config/hypr/wallpapers/live-wallpapers/ --remaining-ok 2>/dev/null
         if [ $? -eq 0 ]; then
-            echo -e "  ${GREEN}[OK]${NC} Live wallpapers downloaded successfully!"
+            echo -e "  ${GREEN}[OK] Live wallpapers downloaded successfully!${NC}"
         else
-            echo -e "  ${YELLOW}[WARN]${NC} Live wallpaper download failed. Will use local themes as fallback."
+            echo -e "  ${GREEN}[WARN] Live wallpaper download failed. Will use local themes as fallback.${NC}"
         fi
     fi
 fi
 
 # Copy configs (skip for minimal mode if configs exist)
 if [ "$MODE" != "minimal" ]; then
-    echo -e "${CYAN}[*] Copying configuration files...${NC}"
+    echo -e "${GREEN}[*] Copying configuration files...${NC}"
     if [ -d ".config/hypr" ]; then
-        find .config/hypr -type f ! -name "hyprpaper.conf" -exec cp {} ~/.config/hypr/ \; 2>/dev/null
-        cp -r .config/hypr/wallpapers ~/.config/hypr/ 2>/dev/null || true
-        echo -e "  ${GREEN}[OK]${NC} Hyprland configs copied"
+        # Copy hyprland configs (including our fixed one)
+        cp -r .config/hypr/* ~/.config/hypr/ 2>/dev/null || true
+        echo -e "  ${GREEN}[OK] Hyprland configs copied${NC}"
     fi
     if [ -d ".config/waybar" ]; then
-        cp -r .config/waybar/* ~/.config/waybar/ 2>/dev/null && echo -e "  ${GREEN}[OK]${NC} Waybar configs copied"
+        cp -r .config/waybar/* ~/.config/waybar/ 2>/dev/null && echo -e "  ${GREEN}[OK] Waybar configs copied${NC}"
     fi
     if [ -d ".config/kitty" ]; then
-        cp -r .config/kitty/* ~/.config/kitty/ 2>/dev/null && echo -e "  ${GREEN}[OK]${NC} Kitty configs copied"
+        cp -r .config/kitty/* ~/.config/kitty/ 2>/dev/null && echo -e "  ${GREEN}[OK] Kitty configs copied${NC}"
     fi
     if [ -d ".config/btop" ]; then
-        cp -r .config/btop/* ~/.config/btop/ 2>/dev/null && echo -e "  ${GREEN}[OK]${NC} btop configs copied"
+        cp -r .config/btop/* ~/.config/btop/ 2>/dev/null && echo -e "  ${GREEN}[OK] btop configs copied${NC}"
     fi
     if [ -d ".config/neofetch" ]; then
-        cp -r .config/neofetch/* ~/.config/neofetch/ 2>/dev/null && echo -e "  ${GREEN}[OK]${NC} Neofetch configs copied"
+        cp -r .config/neofetch/* ~/.config/neofetch/ 2>/dev/null && echo -e "  ${GREEN}[OK] Neofetch configs copied${NC}"
     fi
     if [ -d ".config/mako" ]; then
         cp -r .config/mako/* ~/.config/mako/ 2>/dev/null && echo -e "  ${GREEN}[OK] Mako notification config copied${NC}"
@@ -695,78 +695,23 @@ EOF
     fi
 fi
 
-# Fix SDDM permissions for user
-if [ -d "/var/lib/sddm" ]; then
-    echo -e "${GREEN}[*] Fixing SDDM permissions...${NC}"
-    sudo chown -R sddm:sddm /var/lib/sddm 2>/dev/null || true
-fi
-
-# Ensure user owns their home directory (fixes login issues)
-echo -e "${GREEN}[*] Setting home directory permissions...${NC}"
+# Fix permissions
+echo -e "${GREEN}[*] Fixing permissions...${NC}"
 sudo chown -R "$USER:$USER" "$HOME" 2>/dev/null || true
+sudo chmod 755 "$HOME" 2>/dev/null || true
 
-# Verify Hyprland binary exists and works
-echo -e "${GREEN}[*] Verifying Hyprland installation...${NC}"
+# Verify Hyprland binary
 if [ -x "/usr/bin/Hyprland" ]; then
     echo -e "  ${GREEN}[OK] Hyprland binary found${NC}"
 else
     echo -e "  ${GREEN}[WARN] Hyprland binary not found at /usr/bin/Hyprland${NC}"
-    echo -e "  ${GREEN}[WARN] Trying to locate...${NC}"
     HYPRLAND_PATH=$(which Hyprland 2>/dev/null || find /usr -name "Hyprland" -type f 2>/dev/null | head -n1)
     if [ -n "$HYPRLAND_PATH" ]; then
-        echo -e "  ${GREEN}[OK] Found at: $HYPRLAND_PATH${NC}"
         sudo ln -sf "$HYPRLAND_PATH" /usr/bin/Hyprland 2>/dev/null || true
     fi
 fi
 
-# Create minimal valid hyprland config if missing
-if [ ! -f "$HOME/.config/hypr/hyprland.conf" ]; then
-    echo -e "${GREEN}[*] Creating default hyprland.conf...${NC}"
-    mkdir -p "$HOME/.config/hypr"
-    cat > "$HOME/.config/hypr/hyprland.conf" << 'EOF'
-# Minimal Hyprland Config
-monitor=,preferred,auto,1
-
-exec-once = waybar
-exec-once = hyprpaper
-
-input {
-    kb_layout = us
-    follow_mouse = 1
-}
-
-general {
-    gaps_in = 5
-    gaps_out = 10
-    border_size = 2
-    col.active_border = rgba(ff00ffee)
-    col.inactive_border = rgba(595959aa)
-    layout = dwindle
-}
-
-decoration {
-    rounding = 10
-    blur {
-        enabled = true
-        size = 3
-        passes = 1
-    }
-}
-
-animations {
-    enabled = true
-}
-
-bind = SUPER, RETURN, exec, kitty
-bind = SUPER, Q, killactive,
-bind = SUPER, M, exit,
-bind = SUPER, E, exec, thunar
-bind = SUPER, D, exec, wofi --show drun
-EOF
-    echo -e "  ${GREEN}[OK] Default config created${NC}"
-fi
-
-# SDDM is enabled with Hyprland as default
+# Final summary
 echo -e "${GREEN}[*] Display Manager configured${NC}"
 echo -e "  ${GREEN}[OK] SDDM will provide graphical login screen${NC}"
 echo -e "  ${GREEN}[OK] Hyprland is the default session${NC}"
@@ -784,34 +729,19 @@ if [ "$MODE" != "minimal" ] && [ -n "$backup_dir" ]; then
     echo ""
 fi
 
-echo -e "${GREEN}Configuration locations:${NC}"
-echo -e "  - Hyprland: ~/.config/hypr/${NC}"
-echo -e "  - Waybar: ~/.config/waybar/${NC}"
-echo -e "  - Kitty: ~/.config/kitty/${NC}"
-echo -e "  - btop: ~/.config/btop/${NC}"
-echo -e "  - Neofetch: ~/.config/neofetch/${NC}"
-echo -e "  - Wallpapers: ~/.config/hypr/wallpapers/${NC}"
+echo -e "${GREEN}IMPORTANT FIXES APPLIED:${NC}"
+echo -e "  - SDDM now uses X11 backend (more stable)"
+echo -e "  - NVIDIA environment variables set"
+echo -e "  - Display rendering fixes applied"
+echo -e "  - Hyprland wrapper script created"
 echo ""
-echo -e "${GREEN}After logging in:${NC}"
-echo -e "  - Lock screen: SUPER + L"
-echo -e "  - Screenshot (full): SUPER + Print"
-echo -e "  - Screenshot (region): SUPER + SHIFT + S"
-echo -e "  - Clipboard history: SUPER + V"
+echo -e "${GREEN}If you still get login loop:${NC}"
+echo -e "  1. At SDDM, press Ctrl+Alt+F2"
+echo -e "  2. Login and run: Hyprland"
+echo -e "  3. Check error message"
 echo ""
-
-# Troubleshooting info
-echo ""
-echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}TROUBLESHOOTING:${NC}"
-echo -e "${GREEN}If login loop occurs:${NC}"
-echo -e "  1. Press Ctrl+Alt+F2 to switch to TTY2"
-echo -e "  2. Login with your username/password"
-echo -e "  3. Check logs: cat ~/.local/share/hyprland/hyprland.log"
-echo -e "  4. Or try: sudo systemctl status sddm"
-echo -e "${GREEN}========================================${NC}"
 
 # Ask for reboot
-echo ""
 echo -e "${GREEN}Do you want to reboot now? (y/N): ${NC}"
 read -r reboot_choice
 if [[ "$reboot_choice" =~ ^[Yy]$ ]]; then

@@ -15,13 +15,13 @@ fi
 SUDO_PID=$!
 trap "kill $SUDO_PID 2>/dev/null" EXIT
 
-# Colors
-PURPLE='\033[0;35m'
-PINK='\033[0;95m'
-CYAN='\033[0;36m'
+# Colors - All green theme
 GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-RED='\033[0;31m'
+CYAN='\033[0;32m'
+PURPLE='\033[0;32m'
+PINK='\033[0;32m'
+YELLOW='\033[0;32m'
+RED='\033[0;32m'
 NC='\033[0m'
 
 # Default mode

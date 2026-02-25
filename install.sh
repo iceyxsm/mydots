@@ -659,46 +659,39 @@ if [ "$MODE" != "minimal" ]; then
     # Download wallpapers from Google Drive (only if not already present)
     if command -v gdown &> /dev/null; then
         LIVE_DIR="$HOME/.config/hypr/wallpapers/live-wallpapers"
+        MARKER_FILE="$LIVE_DIR/.downloaded"
         
-        # Check if wallpapers already exist (count files)
+        # Check for image files specifically
         if [ -d "$LIVE_DIR" ]; then
-            FILE_COUNT=$(find "$LIVE_DIR" -type f 2>/dev/null | wc -l)
-            echo -e "${GREEN}[*] Checking for existing wallpapers in $LIVE_DIR...${NC}"
-            echo -e "  ${GREEN}Found $FILE_COUNT files${NC}"
+            IMG_COUNT=$(find "$LIVE_DIR" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.gif" -o -iname "*.webp" \) 2>/dev/null | wc -l)
         else
-            FILE_COUNT=0
-            echo -e "${GREEN}[*] Wallpaper directory doesn't exist yet${NC}"
+            IMG_COUNT=0
+            mkdir -p "$LIVE_DIR"
         fi
         
-        if [ "$FILE_COUNT" -gt 0 ]; then
-            echo -e "${GREEN}[*] Live wallpapers already exist ($FILE_COUNT found), skipping download${NC}"
+        echo -e "${GREEN}[*] Checking for existing wallpapers...${NC}"
+        echo -e "  ${GREEN}Found $IMG_COUNT image files${NC}"
+        
+        # Skip if we have images or marker file
+        if [ "$IMG_COUNT" -ge 2 ] || [ -f "$MARKER_FILE" ]; then
+            echo -e "${GREEN}[*] Live wallpapers already exist ($IMG_COUNT images), skipping download${NC}"
+            touch "$MARKER_FILE"  # Ensure marker exists
         else
             echo -e "${GREEN}[*] Downloading live wallpapers from Google Drive...${NC}"
-            echo -e "  ${GREEN}This may take a few minutes depending on your internet speed...${NC}"
+            echo -e "  ${GREEN}This may take a few minutes...${NC}"
             GDRIVE_FOLDER="https://drive.google.com/drive/folders/1oS6aUxoW6DGoqzu_S3pVBlgicGPgIoYq"
             
-            # Download with better flags for public folders
-            echo -e "  ${GREEN}Running gdown...${NC}"
             gdown --folder "$GDRIVE_FOLDER" -O "$LIVE_DIR" --remaining-ok --no-cookies 2>&1
             
-            echo -e "  ${GREEN}Download complete. Checking results...${NC}"
-            echo -e "  ${GREEN}Listing contents of $LIVE_DIR:${NC}"
-            ls -la "$LIVE_DIR" 2>/dev/null || echo -e "  ${GREEN}Directory empty or not accessible${NC}"
+            # Count downloaded images
+            NEW_COUNT=$(find "$LIVE_DIR" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.gif" -o -iname "*.webp" \) 2>/dev/null | wc -l)
+            echo -e "  ${GREEN}Downloaded $NEW_COUNT image files${NC}"
             
-            # If gdown failed, show manual download instructions
-            if [ ! "$(ls -A "$LIVE_DIR" 2>/dev/null)" ]; then
-                echo -e "  ${GREEN}[WARN] Automatic download failed.${NC}"
-                echo -e "  ${GREEN}Manual download link: $GDRIVE_FOLDER${NC}"
-                echo -e "  ${GREEN}Save files to: $LIVE_DIR${NC}"
-            fi
-            
-            # Count downloaded files
-            NEW_COUNT=$(find "$LIVE_DIR" -type f 2>/dev/null | wc -l)
-            echo -e "  ${GREEN}File count: $NEW_COUNT${NC}"
             if [ "$NEW_COUNT" -gt 0 ]; then
-                echo -e "  ${GREEN}[OK] Downloaded $NEW_COUNT wallpapers successfully!${NC}"
+                echo -e "  ${GREEN}[OK] Downloaded $NEW_COUNT wallpapers!${NC}"
+                touch "$MARKER_FILE"
             else
-                echo -e "  ${GREEN}[WARN] Live wallpaper download failed. Will use local themes as fallback.${NC}"
+                echo -e "  ${GREEN}[WARN] Download failed. Manual: $GDRIVE_FOLDER${NC}"
             fi
         fi
     fi

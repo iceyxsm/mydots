@@ -42,7 +42,7 @@ sudo reboot
 The installer supports three modes for different needs:
 
 ### `--finstall` - Fresh Install (Nuclear Option)
-🔥 **WARNING**: This deletes everything and starts fresh!
+**[WARNING]**: This deletes everything and starts fresh!
 
 ```bash
 ./install.sh --finstall
@@ -55,7 +55,7 @@ The installer supports three modes for different needs:
 - Type `NUKE` to confirm
 
 ### `-finstall` - Full Install (Default)
-📦 Standard installation with backup.
+[FULL] Standard installation with backup.
 
 ```bash
 ./install.sh -finstall    # or just ./install.sh
@@ -68,7 +68,7 @@ The installer supports three modes for different needs:
 - Perfect for first-time setup
 
 ### `-minstall` - Minimal Install
-📝 Preserves existing setup, only adds missing.
+[MINIMAL] Preserves existing setup, only adds missing.
 
 ```bash
 ./install.sh -minstall
@@ -282,4 +282,4 @@ MIT - Do whatever you want with this.
 
 ---
 
-**Enjoy your cyberpunk rice!** 🌸✨
+**Enjoy your cyberpunk rice!**

@@ -701,8 +701,23 @@ fi
 if [ "$MODE" != "minimal" ]; then
     echo -e "${GREEN}[*] Copying configuration files...${NC}"
     if [ -d ".config/hypr" ]; then
-        # Copy hyprland configs but NOT wallpapers (already handled separately)
-        find .config/hypr -type f -name "*.conf" -exec cp {} ~/.config/hypr/ \; 2>/dev/null
+        # Check if running in VM
+        if lspci -nn | grep -i 'vga\|3d\|display' | grep -iE 'vmware|virtualbox' &> /dev/null; then
+            echo -e "  ${GREEN}[OK] Virtual Machine detected - using VM config${NC}"
+            # Copy VM-specific config as main config
+            if [ -f ".config/hypr/hyprland-vm.conf" ]; then
+                cp .config/hypr/hyprland-vm.conf ~/.config/hypr/hyprland.conf
+                echo -e "  ${GREEN}[OK] VM-optimized hyprland.conf installed${NC}"
+            fi
+        else
+            echo -e "  ${GREEN}[OK] Real hardware detected - using full config${NC}"
+            # Copy normal config
+            cp .config/hypr/hyprland.conf ~/.config/hypr/hyprland.conf 2>/dev/null || true
+        fi
+        # Copy other config files
+        cp .config/hypr/environment.conf ~/.config/hypr/ 2>/dev/null || true
+        cp .config/hypr/hyprlock.conf ~/.config/hypr/ 2>/dev/null || true
+        cp .config/hypr/hypridle.conf ~/.config/hypr/ 2>/dev/null || true
         echo -e "  ${GREEN}[OK] Hyprland configs copied${NC}"
     fi
     if [ -d ".config/waybar" ]; then

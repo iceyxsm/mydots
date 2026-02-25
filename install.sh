@@ -178,6 +178,36 @@ systemctl --user enable pipewire-pulse.service 2>/dev/null || true
 systemctl --user enable wireplumber.service 2>/dev/null || true
 echo -e "  ${GREEN}[OK]${NC} PipeWire services enabled for user"
 
+# Install sddm-astronaut-theme from AUR for live wallpaper support
+echo -e "${CYAN}[*] Installing SDDM Astronaut theme (AUR)...${NC}"
+if ! command -v yay &> /dev/null; then
+    echo -e "  ${CYAN}Installing yay first...${NC}"
+    git clone https://aur.archlinux.org/yay.git /tmp/yay
+    cd /tmp/yay
+    makepkg -si --noconfirm
+    cd -
+fi
+yay -S --noconfirm sddm-astronaut-theme 2>/dev/null || echo -e "  ${YELLOW}[SKIP]${NC} sddm-astronaut-theme install skipped"
+
+# Configure SDDM to use astronaut theme with live wallpaper
+echo -e "${CYAN}[*] Configuring SDDM theme...${NC}"
+sudo mkdir -p /etc/sddm.conf.d
+sudo tee /etc/sddm.conf.d/theme.conf > /dev/null << EOF
+[Theme]
+Current=sddm-astronaut-theme
+EOF
+
+# Set default wallpaper for SDDM (use live wallpaper if available, else dark theme)
+if [ -f "$HOME/.config/hypr/wallpapers/live-wallpapers/wallhaven-2evx7g.jpg" ]; then
+    SDDM_WALL="$HOME/.config/hypr/wallpapers/live-wallpapers/wallhaven-2evx7g.jpg"
+else
+    SDDM_WALL="$HOME/.config/hypr/wallpapers/dark-theme/dark-wall1.jpg"
+fi
+
+sudo mkdir -p /usr/share/sddm/themes/sddm-astronaut-theme
+sudo cp "$SDDM_WALL" /usr/share/sddm/themes/sddm-astronaut-theme/background.jpg 2>/dev/null || true
+echo -e "  ${GREEN}[OK]${NC} SDDM theme configured"
+
 # Install gdown for wallpaper downloads
 echo -e "${CYAN}[*] Installing gdown for wallpaper downloads...${NC}"
 if ! command -v gdown &> /dev/null; then
@@ -260,6 +290,7 @@ echo -e "  ${GREEN}[OK]${NC} hyprpaper.conf configured with: $(basename "$DEFAUL
 echo -e "${CYAN}[*] Display Manager configured${NC}"
 echo -e "  ${GREEN}[OK]${NC} SDDM will provide graphical login screen"
 echo -e "  ${GREEN}[OK]${NC} Hyprland is the default session"
+echo -e "  ${GREEN}[OK]${NC} hyprlock still works for locking (SUPER+L)"
 
 echo ""
 echo -e "${PURPLE}========================================${NC}"

@@ -165,6 +165,12 @@ echo -e "${CYAN}[*] Enabling SDDM display manager...${NC}"
 sudo systemctl enable sddm.service
 echo -e "  ${GREEN}[OK]${NC} SDDM enabled (graphical login screen)"
 
+# Configure SDDM to use Hyprland as default session
+echo -e "${CYAN}[*] Configuring SDDM default session...${NC}"
+sudo mkdir -p /etc/sddm.conf.d
+echo -e "[Autologin]\nSession=hyprland.desktop" | sudo tee /etc/sddm.conf.d/hyprland.conf > /dev/null
+echo -e "  ${GREEN}[OK]${NC} Hyprland set as default session"
+
 # Enable PipeWire services for user (WirePlumber handles session management)
 echo -e "${CYAN}[*] Enabling PipeWire audio services...${NC}"
 systemctl --user enable pipewire.service 2>/dev/null || true
@@ -249,10 +255,11 @@ ipc = on
 EOF
 echo -e "  ${GREEN}[OK]${NC} hyprpaper.conf configured with: $(basename "$DEFAULT_WALLPAPER")"
 
-# SDDM is enabled - no need for TTY auto-start
-# User will get a graphical login screen instead
+# SDDM is enabled with Hyprland as default
+# User will get a graphical login screen with Hyprland pre-selected
 echo -e "${CYAN}[*] Display Manager configured${NC}"
 echo -e "  ${GREEN}[OK]${NC} SDDM will provide graphical login screen"
+echo -e "  ${GREEN}[OK]${NC} Hyprland is the default session"
 
 echo ""
 echo -e "${PURPLE}========================================${NC}"
@@ -271,8 +278,8 @@ echo -e "${GREEN}Backup saved to:${NC} ${CYAN}$backup_dir${NC}"
 echo ""
 echo -e "${PURPLE}Next steps:${NC}"
 echo -e "  ${PINK}1.${NC} Reboot your system: ${CYAN}sudo reboot${NC}"
-echo -e "  ${PINK}2.${NC} Select 'Hyprland' from SDDM session menu"
-echo -e "  ${PINK}3.${NC} Login with your username and password"
+echo -e "  ${PINK}2.${NC} SDDM login screen will appear (Hyprland is default)"
+echo -e "  ${PINK}3.${NC} Enter password and login - cyberpunk desktop loads"
 echo ""
 echo -e "${PURPLE}After logging in:${NC}"
 echo -e "  - Test btop: ${CYAN}btop${NC}"

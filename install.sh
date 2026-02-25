@@ -3,6 +3,17 @@
 # Cyberpunk Hyprland Rice Installer
 # Modes: --finstall (fresh), -finstall (full/default), -minstall (minimal)
 
+# Request sudo access FIRST (before anything else)
+if ! sudo -v 2>/dev/null; then
+    echo "[ERROR] Sudo access required. Please run: sudo ./install.sh"
+    exit 1
+fi
+
+# Keep sudo alive in background
+(while true; do sudo -n true; sleep 60; done 2>/dev/null &)
+SUDO_PID=$!
+trap "kill $SUDO_PID 2>/dev/null" EXIT
+
 # Colors
 PURPLE='\033[0;35m'
 PINK='\033[0;95m'
@@ -59,23 +70,6 @@ echo -e "${PINK}  Cyberpunk Hyprland Rice Installer${NC}"
 echo -e "${CYAN}  Mode: ${MODE}${NC}"
 echo -e "${PURPLE}========================================${NC}"
 echo ""
-
-# Request sudo access at start
-echo -e "${CYAN}[*] Requesting sudo access...${NC}"
-if ! sudo -v; then
-    echo -e "${RED}[!] Sudo access required. Please run again with sudo permissions.${NC}"
-    exit 1
-fi
-
-# Keep sudo alive in background
-(while true; do sudo -n true; sleep 60; done 2>/dev/null &)
-SUDO_PID=$!
-
-# Cleanup sudo keepalive on exit
-cleanup() {
-    kill $SUDO_PID 2>/dev/null
-}
-trap cleanup EXIT
 
 # Check if running as root (don't allow)
 if [ "$EUID" -eq 0 ]; then 

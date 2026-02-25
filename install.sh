@@ -247,6 +247,14 @@ echo -e "${GREEN}[*] Detecting GPU...${NC}"
 HAS_NVIDIA=false
 HAS_INTEL=false
 HAS_AMD=false
+HAS_VMWARE=false
+
+# Check for VMware/VirtualBox
+if lspci -nn | grep -i 'vga\|3d\|display' | grep -i vmware &> /dev/null; then
+    HAS_VMWARE=true
+    echo -e "  ${GREEN}[OK] VMware SVGA detected (Virtual Machine)${NC}"
+    echo -e "  ${GREEN}[WARN] Running in VM - software rendering will be used${NC}"
+fi
 
 # Check for NVIDIA
 if lspci -nn | grep -i 'vga\|3d\|display' | grep -i nvidia &> /dev/null; then
@@ -500,20 +508,30 @@ EOF
 
 echo -e "  ${GREEN}[OK] SDDM config created (using X11 backend for stability)${NC}"
 
-# Create Hyprland environment file with NVIDIA fixes and display fixes
+# Create Hyprland environment file with GPU fixes
 echo -e "${GREEN}[*] Creating Hyprland environment config...${NC}"
 mkdir -p ~/.config/hypr
 sudo mkdir -p /etc/environment.d
 
-# For user
-cat > ~/.config/hypr/environment.conf << 'EOF'
-# NVIDIA fixes
+# Detect if running in VM for special config
+if lspci -nn | grep -i vmware &> /dev/null || lspci -nn | grep -i virtualbox &> /dev/null; then
+    VM_FIXES="# Virtual Machine fixes (VMware/VirtualBox)
+WLR_RENDERER_ALLOW_SOFTWARE=1
+WLR_NO_HARDWARE_CURSORS=1
+WLR_BACKEND=wayland"
+    echo -e "  ${GREEN}[OK] Applied VM-specific fixes${NC}"
+else
+    VM_FIXES="# NVIDIA fixes (if applicable)
 WLR_NO_HARDWARE_CURSORS=1
 WLR_RENDERER_ALLOW_SOFTWARE=1
-
-# Display fixes - force proper rendering
 WLR_DRM_NO_ATOMIC=1
-WLR_DRM_NO_MODIFIERS=1
+WLR_DRM_NO_MODIFIERS=1"
+fi
+
+# For user
+cat > ~/.config/hypr/environment.conf << EOF
+# GPU/Display fixes
+$VM_FIXES
 
 # Session type
 XDG_SESSION_TYPE=wayland

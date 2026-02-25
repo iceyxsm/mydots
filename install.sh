@@ -556,6 +556,26 @@ sudo mkdir -p /etc/NetworkManager/NetworkManager.conf
 echo -e "[device]\nwifi.backend=iwd" | sudo tee /etc/NetworkManager/NetworkManager.conf.d/wifi-backend.conf > /dev/null
 echo -e "  ${GREEN}[OK] Using iwd for WiFi (faster connection)${NC}"
 
+# Install neofetch (now AUR only) - do this early so it works in all modes
+echo -e "${GREEN}[*] Installing neofetch (AUR)...${NC}"
+if ! command -v neofetch &> /dev/null; then
+    if ! command -v yay &> /dev/null; then
+        echo -e "  ${GREEN}Installing yay first...${NC}"
+        YAY_TEMP="$(mktemp -d)"
+        git clone https://aur.archlinux.org/yay.git "$YAY_TEMP" 2>/dev/null && \
+            (cd "$YAY_TEMP" && makepkg -si --noconfirm 2>/dev/null) || \
+            echo -e "  ${GREEN}[WARN] Failed to install yay, skipping neofetch${NC}"
+        rm -rf "$YAY_TEMP"
+    fi
+    if command -v yay &> /dev/null; then
+        yay -S --noconfirm neofetch 2>/dev/null && \
+            echo -e "  ${GREEN}[OK] neofetch installed${NC}" || \
+            echo -e "  ${GREEN}[WARN] Failed to install neofetch${NC}"
+    fi
+else
+    echo -e "  ${GREEN}[OK] neofetch already installed${NC}"
+fi
+
 # Install yay AUR helper (if not in minimal mode or yay missing)
 if [ "$MODE" != "minimal" ] || ! command -v yay &> /dev/null; then
     echo -e "${GREEN}[*] Installing yay AUR helper...${NC}"
@@ -583,9 +603,6 @@ if [ "$MODE" != "minimal" ] || ! command -v yay &> /dev/null; then
         
         echo -e "  ${GREEN}Installing cliphist from AUR...${NC}"
         yay -S --noconfirm cliphist 2>/dev/null || echo -e "  ${GREEN}[WARN] Failed to install cliphist${NC}"
-        
-        echo -e "  ${GREEN}Installing neofetch from AUR...${NC}"
-        yay -S --noconfirm neofetch 2>/dev/null || echo -e "  ${GREEN}[WARN] Failed to install neofetch${NC}"
         
         echo -e "${GREEN}[*] Installing SDDM Astronaut theme (AUR)...${NC}"
         yay -S --noconfirm sddm-astronaut-theme 2>/dev/null || echo -e "  ${GREEN}[WARN] sddm-astronaut-theme install failed${NC}"

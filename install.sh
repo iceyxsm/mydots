@@ -638,21 +638,27 @@ if [ "$MODE" != "minimal" ]; then
         echo -e "  ${GREEN}[OK] gdown already installed${NC}"
     fi
     
-    # Download wallpapers from Google Drive
+    # Download wallpapers from Google Drive (only if not already present)
     if command -v gdown &> /dev/null; then
-        echo -e "${GREEN}[*] Downloading live wallpapers from Google Drive...${NC}"
-        echo -e "  ${GREEN}This may take a few minutes depending on your internet speed...${NC}"
-        GDRIVE_FOLDER="https://drive.google.com/drive/folders/1oS6aUxoW6DGoqzu_S3pVBlgicGPgIoYq"
-        
-        # Show progress (remove 2>/dev/null to see output)
-        gdown --folder "$GDRIVE_FOLDER" -O ~/.config/hypr/wallpapers/live-wallpapers/ --remaining-ok
-        
-        if [ $? -eq 0 ]; then
-            # Count downloaded files
-            WALL_COUNT=$(ls -1 ~/.config/hypr/wallpapers/live-wallpapers/ 2>/dev/null | wc -l)
-            echo -e "  ${GREEN}[OK] Downloaded $WALL_COUNT wallpapers successfully!${NC}"
+        # Check if wallpapers already exist
+        if [ -d "$HOME/.config/hypr/wallpapers/live-wallpapers" ] && [ "$(ls -A $HOME/.config/hypr/wallpapers/live-wallpapers/ 2>/dev/null)" ]; then
+            EXISTING_COUNT=$(ls -1 $HOME/.config/hypr/wallpapers/live-wallpapers/ 2>/dev/null | wc -l)
+            echo -e "${GREEN}[*] Live wallpapers already exist ($EXISTING_COUNT found), skipping download${NC}"
         else
-            echo -e "  ${GREEN}[WARN] Live wallpaper download failed. Will use local themes as fallback.${NC}"
+            echo -e "${GREEN}[*] Downloading live wallpapers from Google Drive...${NC}"
+            echo -e "  ${GREEN}This may take a few minutes depending on your internet speed...${NC}"
+            GDRIVE_FOLDER="https://drive.google.com/drive/folders/1oS6aUxoW6DGoqzu_S3pVBlgicGPgIoYq"
+            
+            # Show progress (remove 2>/dev/null to see output)
+            gdown --folder "$GDRIVE_FOLDER" -O ~/.config/hypr/wallpapers/live-wallpapers/ --remaining-ok
+            
+            if [ $? -eq 0 ]; then
+                # Count downloaded files
+                WALL_COUNT=$(ls -1 ~/.config/hypr/wallpapers/live-wallpapers/ 2>/dev/null | wc -l)
+                echo -e "  ${GREEN}[OK] Downloaded $WALL_COUNT wallpapers successfully!${NC}"
+            else
+                echo -e "  ${GREEN}[WARN] Live wallpaper download failed. Will use local themes as fallback.${NC}"
+            fi
         fi
     fi
 fi

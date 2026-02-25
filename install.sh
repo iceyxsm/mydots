@@ -1,6 +1,9 @@
 #!/bin/bash
 
-# Colors for output
+# Cyberpunk Hyprland Rice Installer
+# Modes: --finstall (fresh), -finstall (full/default), -minstall (minimal)
+
+# Colors
 PURPLE='\033[0;35m'
 PINK='\033[0;95m'
 CYAN='\033[0;36m'
@@ -9,8 +12,51 @@ YELLOW='\033[0;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
+# Default mode
+MODE="full"
+
+# Parse arguments
+for arg in "$@"; do
+    case $arg in
+        --finstall)
+            MODE="fresh"
+            shift
+            ;;
+        -finstall)
+            MODE="full"
+            shift
+            ;;
+        -minstall)
+            MODE="minimal"
+            shift
+            ;;
+        -h|--help)
+            echo "Cyberpunk Hyprland Rice Installer"
+            echo ""
+            echo "Usage: ./install.sh [OPTION]"
+            echo ""
+            echo "Options:"
+            echo "  --finstall    FRESH install - DELETES all configs and packages"
+            echo "                (keeps: git, pacman, yay, base system)"
+            echo ""
+            echo "  -finstall     FULL install - Maintains files and apps (DEFAULT)"
+            echo "                Backs up existing configs, installs all packages"
+            echo ""
+            echo "  -minstall     MINIMAL install - Maintains existing packages"
+            echo "                Only installs missing packages, preserves configs"
+            echo ""
+            echo "Examples:"
+            echo "  ./install.sh --finstall    # Nuclear option - start fresh"
+            echo "  ./install.sh -finstall     # Standard install (default)"
+            echo "  ./install.sh -minstall     # Just add missing stuff"
+            exit 0
+            ;;
+    esac
+done
+
 echo -e "${PURPLE}========================================${NC}"
 echo -e "${PINK}  Cyberpunk Hyprland Rice Installer${NC}"
+echo -e "${CYAN}  Mode: ${MODE}${NC}"
 echo -e "${PURPLE}========================================${NC}"
 echo ""
 
@@ -18,6 +64,59 @@ echo ""
 if [ "$EUID" -eq 0 ]; then 
     echo -e "${RED}[!] Please do not run this script as root${NC}"
     exit 1
+fi
+
+# FRESH INSTALL MODE - NUCLEAR OPTION
+if [ "$MODE" = "fresh" ]; then
+    echo -e "${RED}========================================${NC}"
+    echo -e "${RED}  WARNING: FRESH INSTALL MODE${NC}"
+    echo -e "${RED}  This will DELETE all configs and packages!${NC}"
+    echo -e "${RED}========================================${NC}"
+    echo ""
+    echo -e "${YELLOW}This will:${NC}"
+    echo "  - Remove all packages except: base, git, pacman, yay"
+    echo "  - Delete all dotfiles in ~/.config/"
+    echo "  - Delete wallpapers and themes"
+    echo "  - Keep: /home files (Documents, Downloads, etc.)"
+    echo ""
+    read -p "Are you sure? Type 'NUKE' to continue: " confirm
+    if [ "$confirm" != "NUKE" ]; then
+        echo -e "${GREEN}Aborted.${NC}"
+        exit 0
+    fi
+    
+    echo -e "${CYAN}[*] FRESH INSTALL: Removing packages...${NC}"
+    
+    # Get list of explicitly installed packages (excluding base and essential)
+    echo -e "  ${CYAN}Analyzing installed packages...${NC}"
+    
+    # Create list of packages to keep
+    KEEP_PKGS="base base-devel linux linux-firmware pacman git curl wget yay"
+    
+    # Remove all packages not in keep list
+    echo -e "  ${YELLOW}Removing non-essential packages...${NC}"
+    pacman -Qeq | while read pkg; do
+        if ! echo "$KEEP_PKGS" | grep -qw "$pkg"; then
+            echo -e "  ${CYAN}Removing: $pkg${NC}"
+            sudo pacman -Rns --noconfirm "$pkg" 2>/dev/null || true
+        fi
+    done
+    
+    echo -e "${CYAN}[*] FRESH INSTALL: Cleaning configs...${NC}"
+    # Remove all .config except essential
+    for dir in ~/.config/*; do
+        [ -d "$dir" ] || continue
+        dir_name=$(basename "$dir")
+        echo -e "  ${CYAN}Removing: ~/.config/$dir_name${NC}"
+        rm -rf "$dir"
+    done
+    
+    # Clean other common locations
+    rm -rf ~/.local/share/{applications,flatpak} 2>/dev/null || true
+    rm -rf ~/.themes ~/.icons 2>/dev/null || true
+    
+    echo -e "${GREEN}[OK]${NC} System cleaned. Installing fresh..."
+    echo ""
 fi
 
 # Check for multilib support (required for lib32 packages)
@@ -38,17 +137,19 @@ if ! pacman -Qg base-devel &> /dev/null; then
     echo -e "  ${GREEN}[OK]${NC} base-devel installed"
 fi
 
-# Backup existing configs
-backup_dir="$HOME/.config_backup_$(date +%Y%m%d_%H%M%S)"
-mkdir -p "$backup_dir"
-
-echo -e "${CYAN}[*] Backing up existing configs...${NC}"
-for dir in hypr waybar kitty btop neofetch mako; do
-    if [ -d "$HOME/.config/$dir" ]; then
-        mv "$HOME/.config/$dir" "$backup_dir/"
-        echo -e "  ${GREEN}[OK]${NC} Backed up $dir"
-    fi
-done
+# Backup existing configs (skip for minimal mode, always do for fresh)
+if [ "$MODE" != "minimal" ]; then
+    backup_dir="$HOME/.config_backup_$(date +%Y%m%d_%H%M%S)"
+    mkdir -p "$backup_dir"
+    
+    echo -e "${CYAN}[*] Backing up existing configs...${NC}"
+    for dir in hypr waybar kitty btop neofetch mako; do
+        if [ -d "$HOME/.config/$dir" ]; then
+            mv "$HOME/.config/$dir" "$backup_dir/"
+            echo -e "  ${GREEN}[OK]${NC} Backed up $dir"
+        fi
+    done
+fi
 
 # Create config directories
 echo -e "${CYAN}[*] Creating config directories...${NC}"
@@ -56,11 +157,36 @@ mkdir -p ~/.config/{hypr,waybar,kitty,btop/themes,neofetch,mako}
 mkdir -p ~/.config/hypr/wallpapers/{live-wallpapers,dark-theme,light-theme}
 mkdir -p ~/Pictures
 
-# Update system first
+# Update system first (always do this)
 echo -e "${CYAN}[*] Updating system...${NC}"
 sudo pacman -Syu --noconfirm || {
     echo -e "${RED}[!] System update failed${NC}"
     exit 1
+}
+
+# Function to install package (respects minimal mode)
+install_pkg() {
+    local pkg="$1"
+    local required="${2:-0}"
+    
+    if [ "$MODE" = "minimal" ] && pacman -Qi "$pkg" &> /dev/null; then
+        echo -e "  ${GREEN}[OK]${NC} $pkg already installed (skipping in minimal mode)"
+        return 0
+    fi
+    
+    if ! pacman -Qi "$pkg" &> /dev/null; then
+        echo -e "  ${CYAN}Installing $pkg...${NC}"
+        sudo pacman -S --needed --noconfirm "$pkg" || {
+            if [ "$required" = "1" ]; then
+                echo -e "  ${RED}[FAIL]${NC} Required package $pkg failed"
+                return 1
+            else
+                echo -e "  ${YELLOW}[WARN]${NC} Failed to install $pkg, continuing..."
+            fi
+        }
+    else
+        echo -e "  ${GREEN}[OK]${NC} $pkg already installed"
+    fi
 }
 
 # Install base packages for Hyprland
@@ -85,12 +211,7 @@ BASE_PACKAGES=(
 )
 
 for pkg in "${BASE_PACKAGES[@]}"; do
-    if ! pacman -Qi "$pkg" &> /dev/null; then
-        echo -e "  ${CYAN}Installing $pkg...${NC}"
-        sudo pacman -S --needed --noconfirm "$pkg" || echo -e "  ${YELLOW}[WARN]${NC} Failed to install $pkg, continuing..."
-    else
-        echo -e "  ${GREEN}[OK]${NC} $pkg already installed"
-    fi
+    install_pkg "$pkg" 1
 done
 
 # Install GPU drivers (open source - covers Intel and AMD)
@@ -105,12 +226,7 @@ GPU_PACKAGES=(
 )
 
 for pkg in "${GPU_PACKAGES[@]}"; do
-    if ! pacman -Qi "$pkg" &> /dev/null; then
-        echo -e "  ${CYAN}Installing $pkg...${NC}"
-        sudo pacman -S --needed --noconfirm "$pkg" 2>/dev/null || echo -e "  ${YELLOW}[SKIP]${NC} $pkg not found or skipped"
-    else
-        echo -e "  ${GREEN}[OK]${NC} $pkg already installed"
-    fi
+    install_pkg "$pkg"
 done
 
 # Check for NVIDIA GPU and auto-install appropriate driver
@@ -178,38 +294,43 @@ if lspci -nn | grep -i 'vga\|3d\|display' | grep -i nvidia &> /dev/null; then
         echo -e "  ${GREEN}[OK]${NC} Detected: ${DESC}"
         echo -e "  ${CYAN}[*] Installing ${DRIVER}...${NC}"
         
-        # Blacklist nouveau
-        if lsmod | grep -q nouveau 2>/dev/null; then
-            echo -e "  ${CYAN}[*] Blacklisting nouveau...${NC}"
-            echo "blacklist nouveau" | sudo tee /etc/modprobe.d/blacklist-nouveau.conf > /dev/null
-            echo "options nouveau modeset=0" | sudo tee -a /etc/modprobe.d/blacklist-nouveau.conf > /dev/null
-        fi
-        
-        # Install driver
-        if [ "$AUR" = "1" ]; then
-            echo -e "  ${YELLOW}[WARN]${NC} Legacy GPU - requires AUR package"
-            if command -v yay &> /dev/null; then
-                yay -S --noconfirm "$DRIVER" 2>/dev/null || echo -e "  ${YELLOW}[WARN]${NC} Failed to install $DRIVER"
-            else
-                echo -e "  ${YELLOW}[WARN]${NC} yay not available, skipping NVIDIA driver"
-            fi
+        # Check if already installed (minimal mode)
+        if [ "$MODE" = "minimal" ] && pacman -Qi "$DRIVER" &> /dev/null; then
+            echo -e "  ${GREEN}[OK]${NC} ${DRIVER} already installed (minimal mode)"
         else
-            sudo pacman -S --needed --noconfirm "$DRIVER" nvidia-utils lib32-nvidia-utils 2>/dev/null || echo -e "  ${YELLOW}[WARN]${NC} Failed to install NVIDIA driver"
-        fi
-        
-        # Configure if installed
-        if pacman -Qi "$DRIVER" &> /dev/null 2>&1 || [ "$DRIVER" = "nvidia-dkms" -a -d "/usr/lib/nvidia" ]; then
-            echo -e "  ${CYAN}[*] Configuring NVIDIA...${NC}"
-            # Early module loading
-            if ! grep -q "nvidia" /etc/mkinitcpio.conf 2>/dev/null; then
-                sudo sed -i 's/MODULES=()/MODULES=(nvidia nvidia_modeset nvidia_uvm nvidia_drm)/' /etc/mkinitcpio.conf
+            # Blacklist nouveau
+            if lsmod | grep -q nouveau 2>/dev/null; then
+                echo -e "  ${CYAN}[*] Blacklisting nouveau...${NC}"
+                echo "blacklist nouveau" | sudo tee /etc/modprobe.d/blacklist-nouveau.conf > /dev/null
+                echo "options nouveau modeset=0" | sudo tee -a /etc/modprobe.d/blacklist-nouveau.conf > /dev/null
             fi
-            # DRM KMS
-            if [ ! -f "/etc/modprobe.d/nvidia.conf" ]; then
-                echo "options nvidia_drm modeset=1" | sudo tee /etc/modprobe.d/nvidia.conf > /dev/null
+            
+            # Install driver
+            if [ "$AUR" = "1" ]; then
+                echo -e "  ${YELLOW}[WARN]${NC} Legacy GPU - requires AUR package"
+                if command -v yay &> /dev/null; then
+                    yay -S --noconfirm "$DRIVER" 2>/dev/null || echo -e "  ${YELLOW}[WARN]${NC} Failed to install $DRIVER"
+                else
+                    echo -e "  ${YELLOW}[WARN]${NC} yay not available, skipping NVIDIA driver"
+                fi
+            else
+                sudo pacman -S --needed --noconfirm "$DRIVER" nvidia-utils lib32-nvidia-utils 2>/dev/null || echo -e "  ${YELLOW}[WARN]${NC} Failed to install NVIDIA driver"
             fi
-            sudo mkinitcpio -P 2>/dev/null || true
-            echo -e "  ${GREEN}[OK]${NC} NVIDIA driver installed and configured"
+            
+            # Configure if installed
+            if pacman -Qi "$DRIVER" &> /dev/null 2>&1 || [ "$DRIVER" = "nvidia-dkms" -a -d "/usr/lib/nvidia" ]; then
+                echo -e "  ${CYAN}[*] Configuring NVIDIA...${NC}"
+                # Early module loading
+                if ! grep -q "nvidia" /etc/mkinitcpio.conf 2>/dev/null; then
+                    sudo sed -i 's/MODULES=()/MODULES=(nvidia nvidia_modeset nvidia_uvm nvidia_drm)/' /etc/mkinitcpio.conf
+                fi
+                # DRM KMS
+                if [ ! -f "/etc/modprobe.d/nvidia.conf" ]; then
+                    echo "options nvidia_drm modeset=1" | sudo tee /etc/modprobe.d/nvidia.conf > /dev/null
+                fi
+                sudo mkinitcpio -P 2>/dev/null || true
+                echo -e "  ${GREEN}[OK]${NC} NVIDIA driver installed and configured"
+            fi
         fi
     else
         echo -e "  ${YELLOW}[WARN]${NC} Could not detect PCI ID, skipping NVIDIA driver"
@@ -218,7 +339,7 @@ else
     echo -e "  ${GREEN}[OK]${NC} No NVIDIA GPU detected - using Mesa drivers"
 fi
 
-# Install PipeWire audio stack (modern replacement for PulseAudio)
+# Install PipeWire audio stack
 echo -e "${CYAN}[*] Installing PipeWire audio stack...${NC}"
 AUDIO_PACKAGES=(
     "pipewire"
@@ -229,12 +350,7 @@ AUDIO_PACKAGES=(
 )
 
 for pkg in "${AUDIO_PACKAGES[@]}"; do
-    if ! pacman -Qi "$pkg" &> /dev/null; then
-        echo -e "  ${CYAN}Installing $pkg...${NC}"
-        sudo pacman -S --needed --noconfirm "$pkg" || echo -e "  ${YELLOW}[WARN]${NC} Failed to install $pkg, continuing..."
-    else
-        echo -e "  ${GREEN}[OK]${NC} $pkg already installed"
-    fi
+    install_pkg "$pkg"
 done
 
 # Install additional tools
@@ -265,18 +381,11 @@ TOOLS=(
 )
 
 for pkg in "${TOOLS[@]}"; do
-    if ! pacman -Qi "$pkg" &> /dev/null; then
-        echo -e "  ${CYAN}Installing $pkg...${NC}"
-        sudo pacman -S --needed --noconfirm "$pkg" || echo -e "  ${YELLOW}[WARN]${NC} Failed to install $pkg, continuing..."
-    else
-        echo -e "  ${GREEN}[OK]${NC} $pkg already installed"
-    fi
+    install_pkg "$pkg"
 done
 
-# Install fonts (nerd-fonts-jetbrains-mono from AUR, others from repos)
+# Install fonts
 echo -e "${CYAN}[*] Installing fonts...${NC}"
-
-# Install fonts from official repos first
 REPO_FONTS=(
     "ttf-font-awesome"
     "noto-fonts"
@@ -284,28 +393,17 @@ REPO_FONTS=(
 )
 
 for font in "${REPO_FONTS[@]}"; do
-    if ! pacman -Qi "$font" &> /dev/null; then
-        echo -e "  ${CYAN}Installing $font...${NC}"
-        sudo pacman -S --needed --noconfirm "$font" || echo -e "  ${YELLOW}[WARN]${NC} Failed to install $font"
-    else
-        echo -e "  ${GREEN}[OK]${NC} $font already installed"
-    fi
+    install_pkg "$font"
 done
 
 # Enable services
 echo -e "${CYAN}[*] Enabling system services...${NC}"
-sudo systemctl enable --now bluetooth.service || echo -e "  ${YELLOW}[WARN]${NC} Bluetooth service failed"
-sudo systemctl enable --now NetworkManager.service || echo -e "  ${YELLOW}[WARN]${NC} NetworkManager failed"
-
-# Configure NetworkManager to use iwd for WiFi (faster than wpa_supplicant)
-echo -e "${CYAN}[*] Configuring NetworkManager WiFi backend...${NC}"
-sudo mkdir -p /etc/NetworkManager/NetworkManager.conf
-echo -e "[device]\nwifi.backend=iwd" | sudo tee /etc/NetworkManager/NetworkManager.conf.d/wifi-backend.conf > /dev/null
-echo -e "  ${GREEN}[OK]${NC} Using iwd for WiFi (faster connection)"
+sudo systemctl enable --now bluetooth.service 2>/dev/null || echo -e "  ${YELLOW}[WARN]${NC} Bluetooth service failed"
+sudo systemctl enable --now NetworkManager.service 2>/dev/null || echo -e "  ${YELLOW}[WARN]${NC} NetworkManager failed"
 
 # Enable SDDM display manager
 echo -e "${CYAN}[*] Enabling SDDM display manager...${NC}"
-sudo systemctl enable sddm.service || echo -e "  ${YELLOW}[WARN]${NC} SDDM enable failed"
+sudo systemctl enable sddm.service 2>/dev/null || echo -e "  ${YELLOW}[WARN]${NC} SDDM enable failed"
 echo -e "  ${GREEN}[OK]${NC} SDDM configured"
 
 # Verify hyprland.desktop exists
@@ -325,49 +423,49 @@ fi
 # Configure SDDM to use Hyprland as default session
 echo -e "${CYAN}[*] Configuring SDDM default session...${NC}"
 sudo mkdir -p /etc/sddm.conf.d
-sudo tee /etc/sddm.conf.d/hyprland.conf > /dev/null << EOF
-[Autologin]
-Session=hyprland.desktop
-EOF
+echo -e "[Autologin]\nSession=hyprland.desktop" | sudo tee /etc/sddm.conf.d/hyprland.conf > /dev/null
 echo -e "  ${GREEN}[OK]${NC} Hyprland set as default session"
 
-# Install yay AUR helper (safely)
-echo -e "${CYAN}[*] Installing yay AUR helper...${NC}"
-if ! command -v yay &> /dev/null; then
-    YAY_BUILD_DIR="$(mktemp -d)"
-    git clone https://aur.archlinux.org/yay.git "$YAY_BUILD_DIR" || {
-        echo -e "${YELLOW}[WARN]${NC} Failed to clone yay, continuing without AUR packages..."
-        YAY_FAILED=1
-    }
-    if [ -z "$YAY_FAILED" ]; then
-        (cd "$YAY_BUILD_DIR" && makepkg -si --noconfirm) || {
-            echo -e "${YELLOW}[WARN]${NC} Failed to build yay, continuing without AUR packages..."
+# Configure NetworkManager WiFi backend
+echo -e "${CYAN}[*] Configuring NetworkManager WiFi backend...${NC}"
+sudo mkdir -p /etc/NetworkManager/NetworkManager.conf
+echo -e "[device]\nwifi.backend=iwd" | sudo tee /etc/NetworkManager/NetworkManager.conf.d/wifi-backend.conf > /dev/null
+echo -e "  ${GREEN}[OK]${NC} Using iwd for WiFi (faster connection)"
+
+# Install yay AUR helper (if not in minimal mode or yay missing)
+if [ "$MODE" != "minimal" ] || ! command -v yay &> /dev/null; then
+    echo -e "${CYAN}[*] Installing yay AUR helper...${NC}"
+    if ! command -v yay &> /dev/null; then
+        YAY_BUILD_DIR="$(mktemp -d)"
+        git clone https://aur.archlinux.org/yay.git "$YAY_BUILD_DIR" || {
+            echo -e "${YELLOW}[WARN]${NC} Failed to clone yay, continuing without AUR packages..."
             YAY_FAILED=1
         }
+        if [ -z "$YAY_FAILED" ]; then
+            (cd "$YAY_BUILD_DIR" && makepkg -si --noconfirm) || {
+                echo -e "${YELLOW}[WARN]${NC} Failed to build yay, continuing without AUR packages..."
+                YAY_FAILED=1
+            }
+        fi
+        rm -rf "$YAY_BUILD_DIR"
+    else
+        echo -e "  ${GREEN}[OK]${NC} yay already installed"
     fi
-    rm -rf "$YAY_BUILD_DIR"
-else
-    echo -e "  ${GREEN}[OK]${NC} yay already installed"
-fi
-
-# Install nerd font from AUR if yay is available
-if [ -z "$YAY_FAILED" ] && command -v yay &> /dev/null; then
-    echo -e "  ${CYAN}Installing nerd-fonts-jetbrains-mono from AUR...${NC}"
-    yay -S --noconfirm nerd-fonts-jetbrains-mono 2>/dev/null || echo -e "  ${YELLOW}[WARN]${NC} Failed to install JetBrains Nerd Font"
     
-    echo -e "  ${CYAN}Installing cliphist (clipboard manager) from AUR...${NC}"
-    yay -S --noconfirm cliphist 2>/dev/null || echo -e "  ${YELLOW}[WARN]${NC} Failed to install cliphist"
-else
-    echo -e "  ${YELLOW}[WARN]${NC} Skipping AUR packages (yay not available)"
+    # Install AUR packages if yay available
+    if [ -z "$YAY_FAILED" ] && command -v yay &> /dev/null; then
+        echo -e "  ${CYAN}Installing nerd-fonts-jetbrains-mono from AUR...${NC}"
+        yay -S --noconfirm nerd-fonts-jetbrains-mono 2>/dev/null || echo -e "  ${YELLOW}[WARN]${NC} Failed to install JetBrains Nerd Font"
+        
+        echo -e "  ${CYAN}Installing cliphist from AUR...${NC}"
+        yay -S --noconfirm cliphist 2>/dev/null || echo -e "  ${YELLOW}[WARN]${NC} Failed to install cliphist"
+        
+        echo -e "${CYAN}[*] Installing SDDM Astronaut theme (AUR)...${NC}"
+        yay -S --noconfirm sddm-astronaut-theme 2>/dev/null || echo -e "  ${YELLOW}[WARN]${NC} sddm-astronaut-theme install failed"
+    fi
 fi
 
-# Install sddm-astronaut-theme from AUR if yay is available
-if [ -z "$YAY_FAILED" ] && command -v yay &> /dev/null; then
-    echo -e "${CYAN}[*] Installing SDDM Astronaut theme (AUR)...${NC}"
-    yay -S --noconfirm sddm-astronaut-theme 2>/dev/null || echo -e "  ${YELLOW}[WARN]${NC} sddm-astronaut-theme install failed"
-fi
-
-# Enable PipeWire services for user (WirePlumber handles session management)
+# Enable PipeWire services
 echo -e "${CYAN}[*] Enabling PipeWire audio services...${NC}"
 systemctl --user enable pipewire.service 2>/dev/null || true
 systemctl --user enable pipewire-pulse.service 2>/dev/null || true
@@ -387,94 +485,92 @@ else
 fi
 
 # Install gdown for wallpaper downloads
-echo -e "${CYAN}[*] Installing gdown for wallpaper downloads...${NC}"
-if ! command -v gdown &> /dev/null; then
-    pip install --user gdown || echo -e "  ${YELLOW}[WARN]${NC} Failed to install gdown"
-    export PATH="$HOME/.local/bin:$PATH"
-else
-    echo -e "  ${GREEN}[OK]${NC} gdown already installed"
-fi
-
-# Download wallpapers from Google Drive
-echo -e "${CYAN}[*] Downloading live wallpapers from Google Drive...${NC}"
-GDRIVE_FOLDER="https://drive.google.com/drive/folders/1oS6aUxoW6DGoqzu_S3pVBlgicGPgIoYq"
-
-if command -v gdown &> /dev/null; then
-    gdown --folder "$GDRIVE_FOLDER" -O ~/.config/hypr/wallpapers/live-wallpapers/ --remaining-ok 2>/dev/null
-    if [ $? -eq 0 ]; then
-        echo -e "  ${GREEN}[OK]${NC} Live wallpapers downloaded successfully!"
+if [ "$MODE" != "minimal" ]; then
+    echo -e "${CYAN}[*] Installing gdown for wallpaper downloads...${NC}"
+    if ! command -v gdown &> /dev/null; then
+        pip install --user gdown || echo -e "  ${YELLOW}[WARN]${NC} Failed to install gdown"
+        export PATH="$HOME/.local/bin:$PATH"
     else
-        echo -e "  ${YELLOW}[WARN]${NC} Live wallpaper download failed. Will use local themes as fallback."
+        echo -e "  ${GREEN}[OK]${NC} gdown already installed"
     fi
-else
-    echo -e "  ${YELLOW}[WARN]${NC} gdown not available, skipping live wallpaper download"
+    
+    # Download wallpapers from Google Drive
+    if command -v gdown &> /dev/null; then
+        echo -e "${CYAN}[*] Downloading live wallpapers from Google Drive...${NC}"
+        GDRIVE_FOLDER="https://drive.google.com/drive/folders/1oS6aUxoW6DGoqzu_S3pVBlgicGPgIoYq"
+        gdown --folder "$GDRIVE_FOLDER" -O ~/.config/hypr/wallpapers/live-wallpapers/ --remaining-ok 2>/dev/null
+        if [ $? -eq 0 ]; then
+            echo -e "  ${GREEN}[OK]${NC} Live wallpapers downloaded successfully!"
+        else
+            echo -e "  ${YELLOW}[WARN]${NC} Live wallpaper download failed. Will use local themes as fallback."
+        fi
+    fi
 fi
 
-# Copy configs FIRST (but don't overwrite hyprpaper.conf later)
-echo -e "${CYAN}[*] Copying configuration files...${NC}"
-if [ -d ".config/hypr" ]; then
-    # Copy everything EXCEPT hyprpaper.conf (we'll generate it)
-    find .config/hypr -type f ! -name "hyprpaper.conf" -exec cp {} ~/.config/hypr/ \; 2>/dev/null
-    # Copy directories
-    cp -r .config/hypr/wallpapers ~/.config/hypr/ 2>/dev/null || true
-    echo -e "  ${GREEN}[OK]${NC} Hyprland configs copied"
-fi
-if [ -d ".config/waybar" ]; then
-    cp -r .config/waybar/* ~/.config/waybar/ 2>/dev/null && echo -e "  ${GREEN}[OK]${NC} Waybar configs copied"
-fi
-if [ -d ".config/kitty" ]; then
-    cp -r .config/kitty/* ~/.config/kitty/ 2>/dev/null && echo -e "  ${GREEN}[OK]${NC} Kitty configs copied"
-fi
-if [ -d ".config/btop" ]; then
-    cp -r .config/btop/* ~/.config/btop/ 2>/dev/null && echo -e "  ${GREEN}[OK]${NC} btop configs copied"
-fi
-if [ -d ".config/neofetch" ]; then
-    cp -r .config/neofetch/* ~/.config/neofetch/ 2>/dev/null && echo -e "  ${GREEN}[OK]${NC} Neofetch configs copied"
-fi
-if [ -d ".config/mako" ]; then
-    cp -r .config/mako/* ~/.config/mako/ 2>/dev/null && echo -e "  ${GREEN}[OK]${NC} Mako notification config copied"
-fi
-
-# Copy wallpapers if they exist in repo
-if [ -d ".config/hypr/wallpapers/dark-theme" ]; then
-    cp -r .config/hypr/wallpapers/dark-theme/* ~/.config/hypr/wallpapers/dark-theme/ 2>/dev/null
-    echo -e "  ${GREEN}[OK]${NC} Dark theme wallpapers copied"
-fi
-if [ -d ".config/hypr/wallpapers/light-theme" ]; then
-    cp -r .config/hypr/wallpapers/light-theme/* ~/.config/hypr/wallpapers/light-theme/ 2>/dev/null
-    echo -e "  ${GREEN}[OK]${NC} Light theme wallpapers copied"
-fi
-
-# Determine default wallpaper (live wallpapers from gdown, or fallback to local)
-echo -e "${CYAN}[*] Configuring wallpaper...${NC}"
-FALLBACK_WALLPAPER="$HOME/.config/hypr/wallpapers/dark-theme/dark-wall1.jpg"
-
-# Check if live wallpapers were downloaded successfully
-if [ -d ~/.config/hypr/wallpapers/live-wallpapers ] && [ "$(ls -A ~/.config/hypr/wallpapers/live-wallpapers/ 2>/dev/null)" ]; then
-    LIVE_WALL=$(ls ~/.config/hypr/wallpapers/live-wallpapers/ | head -n1)
-    DEFAULT_WALLPAPER="$HOME/.config/hypr/wallpapers/live-wallpapers/$LIVE_WALL"
-    echo -e "  ${GREEN}[OK]${NC} Using live wallpaper: $LIVE_WALL"
-else
-    DEFAULT_WALLPAPER="$FALLBACK_WALLPAPER"
-    echo -e "  ${YELLOW}[WARN]${NC} Live wallpapers not available, using fallback"
-fi
-
-# Generate hyprpaper.conf with the correct wallpaper path
-cat > ~/.config/hypr/hyprpaper.conf << EOF
+# Copy configs (skip for minimal mode if configs exist)
+if [ "$MODE" != "minimal" ]; then
+    echo -e "${CYAN}[*] Copying configuration files...${NC}"
+    if [ -d ".config/hypr" ]; then
+        find .config/hypr -type f ! -name "hyprpaper.conf" -exec cp {} ~/.config/hypr/ \; 2>/dev/null
+        cp -r .config/hypr/wallpapers ~/.config/hypr/ 2>/dev/null || true
+        echo -e "  ${GREEN}[OK]${NC} Hyprland configs copied"
+    fi
+    if [ -d ".config/waybar" ]; then
+        cp -r .config/waybar/* ~/.config/waybar/ 2>/dev/null && echo -e "  ${GREEN}[OK]${NC} Waybar configs copied"
+    fi
+    if [ -d ".config/kitty" ]; then
+        cp -r .config/kitty/* ~/.config/kitty/ 2>/dev/null && echo -e "  ${GREEN}[OK]${NC} Kitty configs copied"
+    fi
+    if [ -d ".config/btop" ]; then
+        cp -r .config/btop/* ~/.config/btop/ 2>/dev/null && echo -e "  ${GREEN}[OK]${NC} btop configs copied"
+    fi
+    if [ -d ".config/neofetch" ]; then
+        cp -r .config/neofetch/* ~/.config/neofetch/ 2>/dev/null && echo -e "  ${GREEN}[OK]${NC} Neofetch configs copied"
+    fi
+    if [ -d ".config/mako" ]; then
+        cp -r .config/mako/* ~/.config/mako/ 2>/dev/null && echo -e "  ${GREEN}[OK]${NC} Mako notification config copied"
+    fi
+    
+    # Copy wallpapers if they exist in repo
+    if [ -d ".config/hypr/wallpapers/dark-theme" ]; then
+        cp -r .config/hypr/wallpapers/dark-theme/* ~/.config/hypr/wallpapers/dark-theme/ 2>/dev/null
+        echo -e "  ${GREEN}[OK]${NC} Dark theme wallpapers copied"
+    fi
+    if [ -d ".config/hypr/wallpapers/light-theme" ]; then
+        cp -r .config/hypr/wallpapers/light-theme/* ~/.config/hypr/wallpapers/light-theme/ 2>/dev/null
+        echo -e "  ${GREEN}[OK]${NC} Light theme wallpapers copied"
+    fi
+    
+    # Determine default wallpaper
+    echo -e "${CYAN}[*] Configuring wallpaper...${NC}"
+    FALLBACK_WALLPAPER="$HOME/.config/hypr/wallpapers/dark-theme/dark-wall1.jpg"
+    
+    if [ -d ~/.config/hypr/wallpapers/live-wallpapers ] && [ "$(ls -A ~/.config/hypr/wallpapers/live-wallpapers/ 2>/dev/null)" ]; then
+        LIVE_WALL=$(ls ~/.config/hypr/wallpapers/live-wallpapers/ | head -n1)
+        DEFAULT_WALLPAPER="$HOME/.config/hypr/wallpapers/live-wallpapers/$LIVE_WALL"
+        echo -e "  ${GREEN}[OK]${NC} Using live wallpaper: $LIVE_WALL"
+    else
+        DEFAULT_WALLPAPER="$FALLBACK_WALLPAPER"
+        echo -e "  ${YELLOW}[WARN]${NC} Live wallpapers not available, using fallback"
+    fi
+    
+    # Generate hyprpaper.conf
+    cat > ~/.config/hypr/hyprpaper.conf << EOF
 preload = $DEFAULT_WALLPAPER
 wallpaper = ,$DEFAULT_WALLPAPER
 splash = false
 ipc = on
 EOF
-echo -e "  ${GREEN}[OK]${NC} hyprpaper.conf configured with: $(basename "$DEFAULT_WALLPAPER")"
-
-# Set SDDM wallpaper (live if available, else dark)
-if [ -d "/usr/share/sddm/themes/sddm-astronaut-theme" ]; then
-    echo -e "${CYAN}[*] Setting SDDM wallpaper...${NC}"
-    if [ -f "$DEFAULT_WALLPAPER" ]; then
-        sudo cp "$DEFAULT_WALLPAPER" /usr/share/sddm/themes/sddm-astronaut-theme/background.jpg 2>/dev/null && \
-            echo -e "  ${GREEN}[OK]${NC} SDDM wallpaper set" || \
-            echo -e "  ${YELLOW}[WARN]${NC} Failed to copy SDDM wallpaper"
+    echo -e "  ${GREEN}[OK]${NC} hyprpaper.conf configured with: $(basename "$DEFAULT_WALLPAPER")"
+    
+    # Set SDDM wallpaper
+    if [ -d "/usr/share/sddm/themes/sddm-astronaut-theme" ]; then
+        echo -e "${CYAN}[*] Setting SDDM wallpaper...${NC}"
+        if [ -f "$DEFAULT_WALLPAPER" ]; then
+            sudo cp "$DEFAULT_WALLPAPER" /usr/share/sddm/themes/sddm-astronaut-theme/background.jpg 2>/dev/null && \
+                echo -e "  ${GREEN}[OK]${NC} SDDM wallpaper set" || \
+                echo -e "  ${YELLOW}[WARN]${NC} Failed to copy SDDM wallpaper"
+        fi
     fi
 fi
 
@@ -487,8 +583,15 @@ echo -e "  ${GREEN}[OK]${NC} hyprlock works for locking (SUPER+L)"
 echo ""
 echo -e "${PURPLE}========================================${NC}"
 echo -e "${PINK}     Installation Complete!${NC}"
+echo -e "${CYAN}     Mode: ${MODE}${NC}"
 echo -e "${PURPLE}========================================${NC}"
 echo ""
+
+if [ "$MODE" != "minimal" ] && [ -n "$backup_dir" ]; then
+    echo -e "${GREEN}Backup saved to:${NC} ${CYAN}$backup_dir${NC}"
+    echo ""
+fi
+
 echo -e "${GREEN}Configuration locations:${NC}"
 echo -e "  - Hyprland: ${CYAN}~/.config/hypr/${NC}"
 echo -e "  - Waybar: ${CYAN}~/.config/waybar/${NC}"
@@ -496,8 +599,6 @@ echo -e "  - Kitty: ${CYAN}~/.config/kitty/${NC}"
 echo -e "  - btop: ${CYAN}~/.config/btop/${NC}"
 echo -e "  - Neofetch: ${CYAN}~/.config/neofetch/${NC}"
 echo -e "  - Wallpapers: ${CYAN}~/.config/hypr/wallpapers/${NC}"
-echo ""
-echo -e "${GREEN}Backup saved to:${NC} ${CYAN}$backup_dir${NC}"
 echo ""
 echo -e "${PURPLE}Next steps:${NC}"
 echo -e "  ${PINK}1.${NC} Reboot your system: ${CYAN}sudo reboot${NC}"

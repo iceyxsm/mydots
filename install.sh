@@ -198,10 +198,15 @@ Current=sddm-astronaut-theme
 EOF
 
 # Set default wallpaper for SDDM (use live wallpaper if available, else dark theme)
-if [ -f "$HOME/.config/hypr/wallpapers/live-wallpapers/wallhaven-2evx7g.jpg" ]; then
-    SDDM_WALL="$HOME/.config/hypr/wallpapers/live-wallpapers/wallhaven-2evx7g.jpg"
+LIVE_WALL_DIR="$HOME/.config/hypr/wallpapers/live-wallpapers"
+if [ -d "$LIVE_WALL_DIR" ] && [ "$(ls -A $LIVE_WALL_DIR 2>/dev/null)" ]; then
+    # Use first live wallpaper found
+    LIVE_WALL_FILE=$(ls "$LIVE_WALL_DIR" | head -n1)
+    SDDM_WALL="$LIVE_WALL_DIR/$LIVE_WALL_FILE"
+    echo -e "  ${GREEN}[OK]${NC} Using live wallpaper for SDDM: $LIVE_WALL_FILE"
 else
     SDDM_WALL="$HOME/.config/hypr/wallpapers/dark-theme/dark-wall1.jpg"
+    echo -e "  ${YELLOW}[WARN]${NC} No live wallpapers, using dark theme fallback"
 fi
 
 sudo mkdir -p /usr/share/sddm/themes/sddm-astronaut-theme

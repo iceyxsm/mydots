@@ -681,23 +681,27 @@ if [ "$MODE" != "minimal" ]; then
         cp -r .config/mako/* ~/.config/mako/ 2>/dev/null && echo -e "  ${GREEN}[OK] Mako notification config copied${NC}"
     fi
     
+    # Remove old hyprpaper.conf to ensure fresh config
+    rm -f ~/.config/hypr/hyprpaper.conf 2>/dev/null || true
+    
     # Determine default wallpaper
-    echo -e "${GREEN}[*] Configuring wallpaper...${NC}"
+    echo -e "${GREEN}[*] Configuring wallpaper...${NC}
     
     # Check for live wallpapers first
+    echo -e "  ${GREEN}Checking for live wallpapers...${NC}"
     if [ -d "$HOME/.config/hypr/wallpapers/live-wallpapers" ] && [ "$(ls -A $HOME/.config/hypr/wallpapers/live-wallpapers/ 2>/dev/null)" ]; then
         LIVE_WALL=$(ls $HOME/.config/hypr/wallpapers/live-wallpapers/ | head -n1)
         DEFAULT_WALLPAPER="$HOME/.config/hypr/wallpapers/live-wallpapers/$LIVE_WALL"
-        echo -e "  ${GREEN}[OK] Using live wallpaper: $LIVE_WALL${NC}"
+        echo -e "  ${GREEN}[OK] Using LIVE wallpaper: $LIVE_WALL${NC}"
     # Then check for dark theme wallpapers
     elif [ -f "$HOME/.config/hypr/wallpapers/dark-theme/dark-wall1.jpg" ]; then
         DEFAULT_WALLPAPER="$HOME/.config/hypr/wallpapers/dark-theme/dark-wall1.jpg"
-        echo -e "  ${GREEN}[OK] Using dark theme fallback wallpaper${NC}"
+        echo -e "  ${GREEN}[OK] Using DARK THEME wallpaper: dark-wall1.jpg${NC}"
     # Last resort - check if any dark theme wallpaper exists
     elif [ -d "$HOME/.config/hypr/wallpapers/dark-theme" ] && [ "$(ls -A $HOME/.config/hypr/wallpapers/dark-theme/ 2>/dev/null)" ]; then
         DARK_WALL=$(ls $HOME/.config/hypr/wallpapers/dark-theme/ | head -n1)
         DEFAULT_WALLPAPER="$HOME/.config/hypr/wallpapers/dark-theme/$DARK_WALL"
-        echo -e "  ${GREEN}[OK] Using dark theme wallpaper: $DARK_WALL${NC}"
+        echo -e "  ${GREEN}[OK] Using DARK THEME wallpaper: $DARK_WALL${NC}"
     else
         echo -e "  ${GREEN}[WARN] No wallpapers found! Using solid color.${NC}"
         DEFAULT_WALLPAPER=""
@@ -711,7 +715,8 @@ wallpaper = ,$DEFAULT_WALLPAPER
 splash = false
 ipc = on
 EOF
-        echo -e "  ${GREEN}[OK] hyprpaper.conf configured${NC}"
+        echo -e "  ${GREEN}[OK] hyprpaper.conf created with:${NC}"
+        echo -e "    ${GREEN}$DEFAULT_WALLPAPER${NC}"
         
         # Set SDDM wallpaper too
         if [ -d "/usr/share/sddm/themes/sddm-astronaut-theme" ]; then

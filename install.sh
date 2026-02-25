@@ -685,7 +685,7 @@ if [ "$MODE" != "minimal" ]; then
     rm -f ~/.config/hypr/hyprpaper.conf 2>/dev/null || true
     
     # Determine default wallpaper
-    echo -e "${GREEN}[*] Configuring wallpaper...${NC}
+    echo -e "${GREEN}[*] Configuring wallpaper...${NC}"
     
     # Check for live wallpapers first
     echo -e "  ${GREEN}Checking for live wallpapers...${NC}"

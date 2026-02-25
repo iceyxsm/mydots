@@ -659,13 +659,20 @@ if [ "$MODE" != "minimal" ]; then
             echo -e "  ${GREEN}This may take a few minutes depending on your internet speed...${NC}"
             GDRIVE_FOLDER="https://drive.google.com/drive/folders/1oS6aUxoW6DGoqzu_S3pVBlgicGPgIoYq"
             
-            # Show progress and capture output
+            # Download with better flags for public folders
             echo -e "  ${GREEN}Running gdown...${NC}"
-            gdown --folder "$GDRIVE_FOLDER" -O "$LIVE_DIR" --remaining-ok 2>&1
+            gdown --folder "$GDRIVE_FOLDER" -O "$LIVE_DIR" --remaining-ok --no-cookies 2>&1
             
             echo -e "  ${GREEN}Download complete. Checking results...${NC}"
             echo -e "  ${GREEN}Listing contents of $LIVE_DIR:${NC}"
             ls -la "$LIVE_DIR" 2>/dev/null || echo -e "  ${GREEN}Directory empty or not accessible${NC}"
+            
+            # If gdown failed, show manual download instructions
+            if [ ! "$(ls -A "$LIVE_DIR" 2>/dev/null)" ]; then
+                echo -e "  ${GREEN}[WARN] Automatic download failed.${NC}"
+                echo -e "  ${GREEN}Manual download link: $GDRIVE_FOLDER${NC}"
+                echo -e "  ${GREEN}Save files to: $LIVE_DIR${NC}"
+            fi
             
             # Count downloaded files
             NEW_COUNT=$(find "$LIVE_DIR" -type f 2>/dev/null | wc -l)

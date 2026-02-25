@@ -55,6 +55,7 @@ BASE_PACKAGES=(
     "qt5-wayland"
     "qt6-wayland"
     "polkit-kde-agent"
+    "sddm"
 )
 
 for pkg in "${BASE_PACKAGES[@]}"; do
@@ -159,6 +160,11 @@ echo -e "${CYAN}[*] Enabling system services...${NC}"
 sudo systemctl enable --now bluetooth.service
 sudo systemctl enable --now NetworkManager.service
 
+# Enable SDDM display manager
+echo -e "${CYAN}[*] Enabling SDDM display manager...${NC}"
+sudo systemctl enable sddm.service
+echo -e "  ${GREEN}[OK]${NC} SDDM enabled (graphical login screen)"
+
 # Enable PipeWire services for user (WirePlumber handles session management)
 echo -e "${CYAN}[*] Enabling PipeWire audio services...${NC}"
 systemctl --user enable pipewire.service 2>/dev/null || true
@@ -243,20 +249,10 @@ ipc = on
 EOF
 echo -e "  ${GREEN}[OK]${NC} hyprpaper.conf configured with: $(basename "$DEFAULT_WALLPAPER")"
 
-# Auto-start Hyprland on TTY1 (optional - for no display manager setups)
-echo -e "${CYAN}[*] Setting up auto-start for Hyprland...${NC}"
-if [ ! -f "$HOME/.bash_profile" ] || ! grep -q "Hyprland" "$HOME/.bash_profile" 2>/dev/null; then
-    cat >> "$HOME/.bash_profile" << 'EOF'
-
-# Auto-start Hyprland on TTY1
-if [ -z "$DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
-    exec Hyprland
-fi
-EOF
-    echo -e "  ${GREEN}[OK]${NC} Hyprland will auto-start on TTY1"
-else
-    echo -e "  ${GREEN}[OK]${NC} Auto-start already configured"
-fi
+# SDDM is enabled - no need for TTY auto-start
+# User will get a graphical login screen instead
+echo -e "${CYAN}[*] Display Manager configured${NC}"
+echo -e "  ${GREEN}[OK]${NC} SDDM will provide graphical login screen"
 
 echo ""
 echo -e "${PURPLE}========================================${NC}"
@@ -275,8 +271,8 @@ echo -e "${GREEN}Backup saved to:${NC} ${CYAN}$backup_dir${NC}"
 echo ""
 echo -e "${PURPLE}Next steps:${NC}"
 echo -e "  ${PINK}1.${NC} Reboot your system: ${CYAN}sudo reboot${NC}"
-echo -e "  ${PINK}2.${NC} Hyprland will auto-start on TTY1 (no display manager needed)"
-echo -e "  ${PINK}3.${NC} Or manually start with: ${CYAN}Hyprland${NC}"
+echo -e "  ${PINK}2.${NC} Select 'Hyprland' from SDDM session menu"
+echo -e "  ${PINK}3.${NC} Login with your username and password"
 echo ""
 echo -e "${PURPLE}After logging in:${NC}"
 echo -e "  - Test btop: ${CYAN}btop${NC}"

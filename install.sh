@@ -60,7 +60,24 @@ echo -e "${CYAN}  Mode: ${MODE}${NC}"
 echo -e "${PURPLE}========================================${NC}"
 echo ""
 
-# Check if running as root
+# Request sudo access at start
+echo -e "${CYAN}[*] Requesting sudo access...${NC}"
+if ! sudo -v; then
+    echo -e "${RED}[!] Sudo access required. Please run again with sudo permissions.${NC}"
+    exit 1
+fi
+
+# Keep sudo alive in background
+(while true; do sudo -n true; sleep 60; done 2>/dev/null &)
+SUDO_PID=$!
+
+# Cleanup sudo keepalive on exit
+cleanup() {
+    kill $SUDO_PID 2>/dev/null
+}
+trap cleanup EXIT
+
+# Check if running as root (don't allow)
 if [ "$EUID" -eq 0 ]; then 
     echo -e "${RED}[!] Please do not run this script as root${NC}"
     exit 1

@@ -621,43 +621,44 @@ EOF
 fi
 
 # SDDM is enabled with Hyprland as default
-echo -e "${CYAN}[*] Display Manager configured${NC}"
+echo -e "${GREEN}[*] Display Manager configured${NC}"
 echo -e "  ${GREEN}[OK]${NC} SDDM will provide graphical login screen"
 echo -e "  ${GREEN}[OK]${NC} Hyprland is the default session"
 echo -e "  ${GREEN}[OK]${NC} hyprlock works for locking (SUPER+L)"
 
 echo ""
-echo -e "${PURPLE}========================================${NC}"
-echo -e "${PINK}     Installation Complete!${NC}"
-echo -e "${CYAN}     Mode: ${MODE}${NC}"
-echo -e "${PURPLE}========================================${NC}"
+echo -e "${GREEN}========================================${NC}"
+echo -e "${GREEN}     Installation Complete!${NC}"
+echo -e "${GREEN}     Mode: ${MODE}${NC}"
+echo -e "${GREEN}========================================${NC}"
 echo ""
 
 if [ "$MODE" != "minimal" ] && [ -n "$backup_dir" ]; then
-    echo -e "${GREEN}Backup saved to:${NC} ${CYAN}$backup_dir${NC}"
+    echo -e "${GREEN}Backup saved to: $backup_dir${NC}"
     echo ""
 fi
 
 echo -e "${GREEN}Configuration locations:${NC}"
-echo -e "  - Hyprland: ${CYAN}~/.config/hypr/${NC}"
-echo -e "  - Waybar: ${CYAN}~/.config/waybar/${NC}"
-echo -e "  - Kitty: ${CYAN}~/.config/kitty/${NC}"
-echo -e "  - btop: ${CYAN}~/.config/btop/${NC}"
-echo -e "  - Neofetch: ${CYAN}~/.config/neofetch/${NC}"
-echo -e "  - Wallpapers: ${CYAN}~/.config/hypr/wallpapers/${NC}"
+echo -e "  - Hyprland: ~/.config/hypr/${NC}"
+echo -e "  - Waybar: ~/.config/waybar/${NC}"
+echo -e "  - Kitty: ~/.config/kitty/${NC}"
+echo -e "  - btop: ~/.config/btop/${NC}"
+echo -e "  - Neofetch: ~/.config/neofetch/${NC}"
+echo -e "  - Wallpapers: ~/.config/hypr/wallpapers/${NC}"
 echo ""
-echo -e "${PURPLE}Next steps:${NC}"
-echo -e "  ${PINK}1.${NC} Reboot your system: ${CYAN}sudo reboot${NC}"
-echo -e "  ${PINK}2.${NC} SDDM login screen will appear (Hyprland is default)"
-echo -e "  ${PINK}3.${NC} Enter password and login - cyberpunk desktop loads"
+echo -e "${GREEN}After logging in:${NC}"
+echo -e "  - Lock screen: SUPER + L"
+echo -e "  - Screenshot (full): SUPER + Print"
+echo -e "  - Screenshot (region): SUPER + SHIFT + S"
+echo -e "  - Clipboard history: SUPER + V"
 echo ""
-echo -e "${PURPLE}After logging in:${NC}"
-echo -e "  - Test btop: ${CYAN}btop${NC}"
-echo -e "  - Test neofetch: ${CYAN}neofetch${NC}"
-echo -e "  - Lock screen: ${CYAN}SUPER + L${NC}"
-echo -e "  - Screenshot (full): ${CYAN}SUPER + Print${NC}"
-echo -e "  - Screenshot (region): ${CYAN}SUPER + SHIFT + S${NC}"
-echo -e "  - Clipboard history: ${CYAN}SUPER + V${NC}"
-echo -e "  - Reload Hyprland: ${CYAN}hyprctl reload${NC}"
-echo ""
-echo -e "${GREEN}Enjoy your cyberpunk rice!${NC}"
+
+# Ask for reboot
+echo -e "${GREEN}Do you want to reboot now? (y/N): ${NC}"
+read -r reboot_choice
+if [[ "$reboot_choice" =~ ^[Yy]$ ]]; then
+    echo -e "${GREEN}Rebooting...${NC}"
+    sudo reboot
+else
+    echo -e "${GREEN}Reboot skipped. Run 'sudo reboot' when ready.${NC}"
+fi

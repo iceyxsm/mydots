@@ -166,10 +166,27 @@ if [ "$MODE" != "minimal" ]; then
 fi
 
 # Create config directories
-echo -e "${CYAN}[*] Creating config directories...${NC}"
+echo -e "${GREEN}[*] Creating config directories...${NC}"
 mkdir -p ~/.config/{hypr,waybar,kitty,btop/themes,neofetch,mako}
 mkdir -p ~/.config/hypr/wallpapers/{live-wallpapers,dark-theme,light-theme}
 mkdir -p ~/Pictures
+
+# Copy local wallpapers FIRST (before trying to download)
+echo -e "${GREEN}[*] Copying local wallpapers...${NC}"
+if [ -d ".config/hypr/wallpapers/dark-theme" ]; then
+    cp -r .config/hypr/wallpapers/dark-theme/* ~/.config/hypr/wallpapers/dark-theme/ 2>/dev/null
+    if [ "$(ls -A ~/.config/hypr/wallpapers/dark-theme/ 2>/dev/null)" ]; then
+        echo -e "  ${GREEN}[OK] Dark theme wallpapers copied${NC}"
+    else
+        echo -e "  ${GREEN}[WARN] No dark theme wallpapers found in repo${NC}"
+    fi
+fi
+if [ -d ".config/hypr/wallpapers/light-theme" ]; then
+    cp -r .config/hypr/wallpapers/light-theme/* ~/.config/hypr/wallpapers/light-theme/ 2>/dev/null
+    if [ "$(ls -A ~/.config/hypr/wallpapers/light-theme/ 2>/dev/null)" ]; then
+        echo -e "  ${GREEN}[OK] Light theme wallpapers copied${NC}"
+    fi
+fi
 
 # Update system first (always do this)
 echo -e "${CYAN}[*] Updating system...${NC}"
@@ -454,16 +471,19 @@ echo -e "  ${GREEN}[OK]${NC} SDDM configured"
 
 # Verify hyprland.desktop exists
 if [ ! -f "/usr/share/wayland-sessions/hyprland.desktop" ]; then
-    echo -e "${YELLOW}[WARN]${NC} hyprland.desktop not found, creating..."
+    echo -e "${GREEN}[WARN] hyprland.desktop not found, creating...${NC}"
     sudo mkdir -p /usr/share/wayland-sessions
     sudo tee /usr/share/wayland-sessions/hyprland.desktop > /dev/null << 'EOF'
 [Desktop Entry]
 Name=Hyprland
 Comment=An intelligent dynamic tiling Wayland compositor
-Exec=Hyprland
+Exec=/usr/bin/Hyprland
 Type=Application
+DesktopNames=Hyprland
+XDG_CURRENT_DESKTOP=Hyprland
 EOF
-    echo -e "  ${GREEN}[OK]${NC} hyprland.desktop created"
+    sudo chmod 644 /usr/share/wayland-sessions/hyprland.desktop
+    echo -e "  ${GREEN}[OK] hyprland.desktop created${NC}"
 fi
 
 # Configure SDDM to use Hyprland as default session
@@ -574,57 +594,68 @@ if [ "$MODE" != "minimal" ]; then
         cp -r .config/neofetch/* ~/.config/neofetch/ 2>/dev/null && echo -e "  ${GREEN}[OK]${NC} Neofetch configs copied"
     fi
     if [ -d ".config/mako" ]; then
-        cp -r .config/mako/* ~/.config/mako/ 2>/dev/null && echo -e "  ${GREEN}[OK]${NC} Mako notification config copied"
-    fi
-    
-    # Copy wallpapers if they exist in repo
-    if [ -d ".config/hypr/wallpapers/dark-theme" ]; then
-        cp -r .config/hypr/wallpapers/dark-theme/* ~/.config/hypr/wallpapers/dark-theme/ 2>/dev/null
-        echo -e "  ${GREEN}[OK]${NC} Dark theme wallpapers copied"
-    fi
-    if [ -d ".config/hypr/wallpapers/light-theme" ]; then
-        cp -r .config/hypr/wallpapers/light-theme/* ~/.config/hypr/wallpapers/light-theme/ 2>/dev/null
-        echo -e "  ${GREEN}[OK]${NC} Light theme wallpapers copied"
+        cp -r .config/mako/* ~/.config/mako/ 2>/dev/null && echo -e "  ${GREEN}[OK] Mako notification config copied${NC}"
     fi
     
     # Determine default wallpaper
-    echo -e "${CYAN}[*] Configuring wallpaper...${NC}"
-    FALLBACK_WALLPAPER="$HOME/.config/hypr/wallpapers/dark-theme/dark-wall1.jpg"
+    echo -e "${GREEN}[*] Configuring wallpaper...${NC}"
     
-    if [ -d ~/.config/hypr/wallpapers/live-wallpapers ] && [ "$(ls -A ~/.config/hypr/wallpapers/live-wallpapers/ 2>/dev/null)" ]; then
-        LIVE_WALL=$(ls ~/.config/hypr/wallpapers/live-wallpapers/ | head -n1)
+    # Check for live wallpapers first
+    if [ -d "$HOME/.config/hypr/wallpapers/live-wallpapers" ] && [ "$(ls -A $HOME/.config/hypr/wallpapers/live-wallpapers/ 2>/dev/null)" ]; then
+        LIVE_WALL=$(ls $HOME/.config/hypr/wallpapers/live-wallpapers/ | head -n1)
         DEFAULT_WALLPAPER="$HOME/.config/hypr/wallpapers/live-wallpapers/$LIVE_WALL"
-        echo -e "  ${GREEN}[OK]${NC} Using live wallpaper: $LIVE_WALL"
+        echo -e "  ${GREEN}[OK] Using live wallpaper: $LIVE_WALL${NC}"
+    # Then check for dark theme wallpapers
+    elif [ -f "$HOME/.config/hypr/wallpapers/dark-theme/dark-wall1.jpg" ]; then
+        DEFAULT_WALLPAPER="$HOME/.config/hypr/wallpapers/dark-theme/dark-wall1.jpg"
+        echo -e "  ${GREEN}[OK] Using dark theme fallback wallpaper${NC}"
+    # Last resort - check if any dark theme wallpaper exists
+    elif [ -d "$HOME/.config/hypr/wallpapers/dark-theme" ] && [ "$(ls -A $HOME/.config/hypr/wallpapers/dark-theme/ 2>/dev/null)" ]; then
+        DARK_WALL=$(ls $HOME/.config/hypr/wallpapers/dark-theme/ | head -n1)
+        DEFAULT_WALLPAPER="$HOME/.config/hypr/wallpapers/dark-theme/$DARK_WALL"
+        echo -e "  ${GREEN}[OK] Using dark theme wallpaper: $DARK_WALL${NC}"
     else
-        DEFAULT_WALLPAPER="$FALLBACK_WALLPAPER"
-        echo -e "  ${YELLOW}[WARN]${NC} Live wallpapers not available, using fallback"
+        echo -e "  ${GREEN}[WARN] No wallpapers found! Using solid color.${NC}"
+        DEFAULT_WALLPAPER=""
     fi
     
     # Generate hyprpaper.conf
-    cat > ~/.config/hypr/hyprpaper.conf << EOF
+    if [ -n "$DEFAULT_WALLPAPER" ] && [ -f "$DEFAULT_WALLPAPER" ]; then
+        cat > ~/.config/hypr/hyprpaper.conf << EOF
 preload = $DEFAULT_WALLPAPER
 wallpaper = ,$DEFAULT_WALLPAPER
 splash = false
 ipc = on
 EOF
-    echo -e "  ${GREEN}[OK]${NC} hyprpaper.conf configured with: $(basename "$DEFAULT_WALLPAPER")"
-    
-    # Set SDDM wallpaper
-    if [ -d "/usr/share/sddm/themes/sddm-astronaut-theme" ]; then
-        echo -e "${CYAN}[*] Setting SDDM wallpaper...${NC}"
-        if [ -f "$DEFAULT_WALLPAPER" ]; then
+        echo -e "  ${GREEN}[OK] hyprpaper.conf configured${NC}"
+        
+        # Set SDDM wallpaper too
+        if [ -d "/usr/share/sddm/themes/sddm-astronaut-theme" ]; then
+            echo -e "${GREEN}[*] Setting SDDM wallpaper...${NC}"
             sudo cp "$DEFAULT_WALLPAPER" /usr/share/sddm/themes/sddm-astronaut-theme/background.jpg 2>/dev/null && \
-                echo -e "  ${GREEN}[OK]${NC} SDDM wallpaper set" || \
-                echo -e "  ${YELLOW}[WARN]${NC} Failed to copy SDDM wallpaper"
+                echo -e "  ${GREEN}[OK] SDDM wallpaper set${NC}" || \
+                echo -e "  ${GREEN}[WARN] Failed to copy SDDM wallpaper${NC}"
         fi
+    else
+        echo -e "  ${GREEN}[WARN] No wallpaper available, hyprpaper will use default${NC}"
     fi
 fi
 
+# Fix SDDM permissions for user
+if [ -d "/var/lib/sddm" ]; then
+    echo -e "${GREEN}[*] Fixing SDDM permissions...${NC}"
+    sudo chown -R sddm:sddm /var/lib/sddm 2>/dev/null || true
+fi
+
+# Ensure user owns their home directory (fixes login issues)
+echo -e "${GREEN}[*] Setting home directory permissions...${NC}"
+sudo chown -R "$USER:$USER" "$HOME" 2>/dev/null || true
+
 # SDDM is enabled with Hyprland as default
 echo -e "${GREEN}[*] Display Manager configured${NC}"
-echo -e "  ${GREEN}[OK]${NC} SDDM will provide graphical login screen"
-echo -e "  ${GREEN}[OK]${NC} Hyprland is the default session"
-echo -e "  ${GREEN}[OK]${NC} hyprlock works for locking (SUPER+L)"
+echo -e "  ${GREEN}[OK] SDDM will provide graphical login screen${NC}"
+echo -e "  ${GREEN}[OK] Hyprland is the default session${NC}"
+echo -e "  ${GREEN}[OK] hyprlock works for locking (SUPER+L)${NC}"
 
 echo ""
 echo -e "${GREEN}========================================${NC}"

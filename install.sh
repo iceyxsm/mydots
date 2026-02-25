@@ -43,7 +43,7 @@ backup_dir="$HOME/.config_backup_$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$backup_dir"
 
 echo -e "${CYAN}[*] Backing up existing configs...${NC}"
-for dir in hypr waybar kitty btop neofetch; do
+for dir in hypr waybar kitty btop neofetch mako; do
     if [ -d "$HOME/.config/$dir" ]; then
         mv "$HOME/.config/$dir" "$backup_dir/"
         echo -e "  ${GREEN}[OK]${NC} Backed up $dir"
@@ -52,8 +52,9 @@ done
 
 # Create config directories
 echo -e "${CYAN}[*] Creating config directories...${NC}"
-mkdir -p ~/.config/{hypr,waybar,kitty,btop/themes,neofetch}
+mkdir -p ~/.config/{hypr,waybar,kitty,btop/themes,neofetch,mako}
 mkdir -p ~/.config/hypr/wallpapers/{live-wallpapers,dark-theme,light-theme}
+mkdir -p ~/Pictures
 
 # Update system first
 echo -e "${CYAN}[*] Updating system...${NC}"
@@ -68,9 +69,14 @@ BASE_PACKAGES=(
     "hyprland"
     "hyprpaper"
     "hyprlock"
+    "hypridle"
     "waybar"
     "kitty"
     "wofi"
+    "mako"
+    "grim"
+    "slurp"
+    "wl-clipboard"
     "xdg-desktop-portal-hyprland"
     "qt5-wayland"
     "qt6-wayland"
@@ -232,8 +238,11 @@ fi
 if [ -z "$YAY_FAILED" ] && command -v yay &> /dev/null; then
     echo -e "  ${CYAN}Installing nerd-fonts-jetbrains-mono from AUR...${NC}"
     yay -S --noconfirm nerd-fonts-jetbrains-mono 2>/dev/null || echo -e "  ${YELLOW}[WARN]${NC} Failed to install JetBrains Nerd Font"
+    
+    echo -e "  ${CYAN}Installing cliphist (clipboard manager) from AUR...${NC}"
+    yay -S --noconfirm cliphist 2>/dev/null || echo -e "  ${YELLOW}[WARN]${NC} Failed to install cliphist"
 else
-    echo -e "  ${YELLOW}[WARN]${NC} Skipping AUR fonts (yay not available)"
+    echo -e "  ${YELLOW}[WARN]${NC} Skipping AUR packages (yay not available)"
 fi
 
 # Install sddm-astronaut-theme from AUR if yay is available
@@ -305,6 +314,9 @@ if [ -d ".config/btop" ]; then
 fi
 if [ -d ".config/neofetch" ]; then
     cp -r .config/neofetch/* ~/.config/neofetch/ 2>/dev/null && echo -e "  ${GREEN}[OK]${NC} Neofetch configs copied"
+fi
+if [ -d ".config/mako" ]; then
+    cp -r .config/mako/* ~/.config/mako/ 2>/dev/null && echo -e "  ${GREEN}[OK]${NC} Mako notification config copied"
 fi
 
 # Copy wallpapers if they exist in repo
@@ -380,6 +392,9 @@ echo -e "${PURPLE}After logging in:${NC}"
 echo -e "  - Test btop: ${CYAN}btop${NC}"
 echo -e "  - Test neofetch: ${CYAN}neofetch${NC}"
 echo -e "  - Lock screen: ${CYAN}SUPER + L${NC}"
+echo -e "  - Screenshot (full): ${CYAN}SUPER + Print${NC}"
+echo -e "  - Screenshot (region): ${CYAN}SUPER + SHIFT + S${NC}"
+echo -e "  - Clipboard history: ${CYAN}SUPER + V${NC}"
 echo -e "  - Reload Hyprland: ${CYAN}hyprctl reload${NC}"
 echo ""
 echo -e "${GREEN}Enjoy your cyberpunk rice!${NC}"

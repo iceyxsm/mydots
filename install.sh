@@ -792,6 +792,14 @@ EOF
         echo -e "  ${GREEN}[OK] hyprpaper.conf created with:${NC}"
         echo -e "    ${GREEN}$DEFAULT_WALLPAPER${NC}"
         
+        # Update hyprlock.conf to use SAME wallpaper
+        if [ -f "$HOME/.config/hypr/hyprlock.conf" ]; then
+            echo -e "  ${GREEN}[*] Updating hyprlock.conf to match...${NC}"
+            sed -i "s|path = .*|path = $DEFAULT_WALLPAPER|" "$HOME/.config/hypr/hyprlock.conf" 2>/dev/null && \
+                echo -e "    ${GREEN}[OK] hyprlock.conf updated${NC}" || \
+                echo -e "    ${GREEN}[WARN] Could not update hyprlock.conf${NC}"
+        fi
+        
         # Set SDDM wallpaper too
         if [ -d "/usr/share/sddm/themes/sddm-astronaut-theme" ]; then
             echo -e "${GREEN}[*] Setting SDDM wallpaper...${NC}"

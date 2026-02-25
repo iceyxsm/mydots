@@ -1,12 +1,11 @@
 #!/bin/bash
 
-set -e
-
 # Colors for output
 PURPLE='\033[0;35m'
 PINK='\033[0;95m'
 CYAN='\033[0;36m'
 GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
@@ -19,6 +18,24 @@ echo ""
 if [ "$EUID" -eq 0 ]; then 
     echo -e "${RED}[!] Please do not run this script as root${NC}"
     exit 1
+fi
+
+# Check for multilib support (required for lib32 packages)
+echo -e "${CYAN}[*] Checking system configuration...${NC}"
+if ! grep -q "^\[multilib\]" /etc/pacman.conf; then
+    echo -e "  ${YELLOW}[WARN]${NC} Multilib not enabled - required for 32-bit libraries"
+    echo -e "  ${CYAN}[*] Enabling multilib...${NC}"
+    sudo sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/s/#\[multilib\]/[multilib]/' /etc/pacman.conf
+    sudo sed -i '/^\[multilib\]$/,/^#Include = \/etc\/pacman.d\/mirrorlist$/s/^#Include = \/etc\/pacman.d\/mirrorlist$/Include = \/etc\/pacman.d\/mirrorlist/' /etc/pacman.conf
+    sudo pacman -Syu --noconfirm
+    echo -e "  ${GREEN}[OK]${NC} Multilib enabled"
+fi
+
+# Check for base-devel (required for makepkg/AUR)
+if ! pacman -Qg base-devel &> /dev/null; then
+    echo -e "  ${CYAN}[*] Installing base-devel (required for AUR)...${NC}"
+    sudo pacman -S --needed --noconfirm base-devel
+    echo -e "  ${GREEN}[OK]${NC} base-devel installed"
 fi
 
 # Backup existing configs
@@ -40,7 +57,10 @@ mkdir -p ~/.config/hypr/wallpapers/{live-wallpapers,dark-theme,light-theme}
 
 # Update system first
 echo -e "${CYAN}[*] Updating system...${NC}"
-sudo pacman -Syu --noconfirm
+sudo pacman -Syu --noconfirm || {
+    echo -e "${RED}[!] System update failed${NC}"
+    exit 1
+}
 
 # Install base packages for Hyprland
 echo -e "${CYAN}[*] Installing base Hyprland packages...${NC}"
@@ -61,7 +81,7 @@ BASE_PACKAGES=(
 for pkg in "${BASE_PACKAGES[@]}"; do
     if ! pacman -Qi "$pkg" &> /dev/null; then
         echo -e "  ${CYAN}Installing $pkg...${NC}"
-        sudo pacman -S --needed --noconfirm "$pkg" || echo -e "  ${RED}[FAIL] Failed to install $pkg${NC}"
+        sudo pacman -S --needed --noconfirm "$pkg" || echo -e "  ${YELLOW}[WARN]${NC} Failed to install $pkg, continuing..."
     else
         echo -e "  ${GREEN}[OK]${NC} $pkg already installed"
     fi
@@ -81,7 +101,7 @@ GPU_PACKAGES=(
 for pkg in "${GPU_PACKAGES[@]}"; do
     if ! pacman -Qi "$pkg" &> /dev/null; then
         echo -e "  ${CYAN}Installing $pkg...${NC}"
-        sudo pacman -S --needed --noconfirm "$pkg" 2>/dev/null || echo -e "  ${YELLOW}[SKIP]${NC} $pkg not found or already installed"
+        sudo pacman -S --needed --noconfirm "$pkg" 2>/dev/null || echo -e "  ${YELLOW}[SKIP]${NC} $pkg not found or skipped"
     else
         echo -e "  ${GREEN}[OK]${NC} $pkg already installed"
     fi
@@ -100,7 +120,7 @@ AUDIO_PACKAGES=(
 for pkg in "${AUDIO_PACKAGES[@]}"; do
     if ! pacman -Qi "$pkg" &> /dev/null; then
         echo -e "  ${CYAN}Installing $pkg...${NC}"
-        sudo pacman -S --needed --noconfirm "$pkg" || echo -e "  ${RED}[FAIL] Failed to install $pkg${NC}"
+        sudo pacman -S --needed --noconfirm "$pkg" || echo -e "  ${YELLOW}[WARN]${NC} Failed to install $pkg, continuing..."
     else
         echo -e "  ${GREEN}[OK]${NC} $pkg already installed"
     fi
@@ -131,25 +151,26 @@ TOOLS=(
 for pkg in "${TOOLS[@]}"; do
     if ! pacman -Qi "$pkg" &> /dev/null; then
         echo -e "  ${CYAN}Installing $pkg...${NC}"
-        sudo pacman -S --needed --noconfirm "$pkg" || echo -e "  ${RED}[FAIL] Failed to install $pkg${NC}"
+        sudo pacman -S --needed --noconfirm "$pkg" || echo -e "  ${YELLOW}[WARN]${NC} Failed to install $pkg, continuing..."
     else
         echo -e "  ${GREEN}[OK]${NC} $pkg already installed"
     fi
 done
 
-# Install fonts
+# Install fonts (nerd-fonts-jetbrains-mono from AUR, others from repos)
 echo -e "${CYAN}[*] Installing fonts...${NC}"
-FONTS=(
-    "ttf-jetbrains-mono-nerd"
+
+# Install fonts from official repos first
+REPO_FONTS=(
     "ttf-font-awesome"
     "noto-fonts"
     "noto-fonts-emoji"
 )
 
-for font in "${FONTS[@]}"; do
+for font in "${REPO_FONTS[@]}"; do
     if ! pacman -Qi "$font" &> /dev/null; then
         echo -e "  ${CYAN}Installing $font...${NC}"
-        sudo pacman -S --needed --noconfirm "$font" || echo -e "  ${RED}[FAIL] Failed to install $font${NC}"
+        sudo pacman -S --needed --noconfirm "$font" || echo -e "  ${YELLOW}[WARN]${NC} Failed to install $font"
     else
         echo -e "  ${GREEN}[OK]${NC} $font already installed"
     fi
@@ -157,19 +178,69 @@ done
 
 # Enable services
 echo -e "${CYAN}[*] Enabling system services...${NC}"
-sudo systemctl enable --now bluetooth.service
-sudo systemctl enable --now NetworkManager.service
+sudo systemctl enable --now bluetooth.service || echo -e "  ${YELLOW}[WARN]${NC} Bluetooth service failed"
+sudo systemctl enable --now NetworkManager.service || echo -e "  ${YELLOW}[WARN]${NC} NetworkManager failed"
 
 # Enable SDDM display manager
 echo -e "${CYAN}[*] Enabling SDDM display manager...${NC}"
-sudo systemctl enable sddm.service
-echo -e "  ${GREEN}[OK]${NC} SDDM enabled (graphical login screen)"
+sudo systemctl enable sddm.service || echo -e "  ${YELLOW}[WARN]${NC} SDDM enable failed"
+echo -e "  ${GREEN}[OK]${NC} SDDM configured"
+
+# Verify hyprland.desktop exists
+if [ ! -f "/usr/share/wayland-sessions/hyprland.desktop" ]; then
+    echo -e "${YELLOW}[WARN]${NC} hyprland.desktop not found, creating..."
+    sudo mkdir -p /usr/share/wayland-sessions
+    sudo tee /usr/share/wayland-sessions/hyprland.desktop > /dev/null << 'EOF'
+[Desktop Entry]
+Name=Hyprland
+Comment=An intelligent dynamic tiling Wayland compositor
+Exec=Hyprland
+Type=Application
+EOF
+    echo -e "  ${GREEN}[OK]${NC} hyprland.desktop created"
+fi
 
 # Configure SDDM to use Hyprland as default session
 echo -e "${CYAN}[*] Configuring SDDM default session...${NC}"
 sudo mkdir -p /etc/sddm.conf.d
-echo -e "[Autologin]\nSession=hyprland.desktop" | sudo tee /etc/sddm.conf.d/hyprland.conf > /dev/null
+sudo tee /etc/sddm.conf.d/hyprland.conf > /dev/null << EOF
+[Autologin]
+Session=hyprland.desktop
+EOF
 echo -e "  ${GREEN}[OK]${NC} Hyprland set as default session"
+
+# Install yay AUR helper (safely)
+echo -e "${CYAN}[*] Installing yay AUR helper...${NC}"
+if ! command -v yay &> /dev/null; then
+    YAY_BUILD_DIR="$(mktemp -d)"
+    git clone https://aur.archlinux.org/yay.git "$YAY_BUILD_DIR" || {
+        echo -e "${YELLOW}[WARN]${NC} Failed to clone yay, continuing without AUR packages..."
+        YAY_FAILED=1
+    }
+    if [ -z "$YAY_FAILED" ]; then
+        (cd "$YAY_BUILD_DIR" && makepkg -si --noconfirm) || {
+            echo -e "${YELLOW}[WARN]${NC} Failed to build yay, continuing without AUR packages..."
+            YAY_FAILED=1
+        }
+    fi
+    rm -rf "$YAY_BUILD_DIR"
+else
+    echo -e "  ${GREEN}[OK]${NC} yay already installed"
+fi
+
+# Install nerd font from AUR if yay is available
+if [ -z "$YAY_FAILED" ] && command -v yay &> /dev/null; then
+    echo -e "  ${CYAN}Installing nerd-fonts-jetbrains-mono from AUR...${NC}"
+    yay -S --noconfirm nerd-fonts-jetbrains-mono 2>/dev/null || echo -e "  ${YELLOW}[WARN]${NC} Failed to install JetBrains Nerd Font"
+else
+    echo -e "  ${YELLOW}[WARN]${NC} Skipping AUR fonts (yay not available)"
+fi
+
+# Install sddm-astronaut-theme from AUR if yay is available
+if [ -z "$YAY_FAILED" ] && command -v yay &> /dev/null; then
+    echo -e "${CYAN}[*] Installing SDDM Astronaut theme (AUR)...${NC}"
+    yay -S --noconfirm sddm-astronaut-theme 2>/dev/null || echo -e "  ${YELLOW}[WARN]${NC} sddm-astronaut-theme install failed"
+fi
 
 # Enable PipeWire services for user (WirePlumber handles session management)
 echo -e "${CYAN}[*] Enabling PipeWire audio services...${NC}"
@@ -178,47 +249,23 @@ systemctl --user enable pipewire-pulse.service 2>/dev/null || true
 systemctl --user enable wireplumber.service 2>/dev/null || true
 echo -e "  ${GREEN}[OK]${NC} PipeWire services enabled for user"
 
-# Install sddm-astronaut-theme from AUR for live wallpaper support
-echo -e "${CYAN}[*] Installing SDDM Astronaut theme (AUR)...${NC}"
-if ! command -v yay &> /dev/null; then
-    echo -e "  ${CYAN}Installing yay first...${NC}"
-    git clone https://aur.archlinux.org/yay.git /tmp/yay
-    cd /tmp/yay
-    makepkg -si --noconfirm
-    cd -
-fi
-yay -S --noconfirm sddm-astronaut-theme 2>/dev/null || echo -e "  ${YELLOW}[SKIP]${NC} sddm-astronaut-theme install skipped"
-
-# Configure SDDM to use astronaut theme with live wallpaper
-echo -e "${CYAN}[*] Configuring SDDM theme...${NC}"
-sudo mkdir -p /etc/sddm.conf.d
-sudo tee /etc/sddm.conf.d/theme.conf > /dev/null << EOF
+# Configure SDDM theme (only if astronaut theme was installed)
+if [ -d "/usr/share/sddm/themes/sddm-astronaut-theme" ]; then
+    echo -e "${CYAN}[*] Configuring SDDM theme...${NC}"
+    sudo tee /etc/sddm.conf.d/theme.conf > /dev/null << EOF
 [Theme]
 Current=sddm-astronaut-theme
 EOF
-
-# Set default wallpaper for SDDM (use live wallpaper if available, else dark theme)
-LIVE_WALL_DIR="$HOME/.config/hypr/wallpapers/live-wallpapers"
-if [ -d "$LIVE_WALL_DIR" ] && [ "$(ls -A $LIVE_WALL_DIR 2>/dev/null)" ]; then
-    # Use first live wallpaper found
-    LIVE_WALL_FILE=$(ls "$LIVE_WALL_DIR" | head -n1)
-    SDDM_WALL="$LIVE_WALL_DIR/$LIVE_WALL_FILE"
-    echo -e "  ${GREEN}[OK]${NC} Using live wallpaper for SDDM: $LIVE_WALL_FILE"
+    echo -e "  ${GREEN}[OK]${NC} Astronaut theme configured"
 else
-    SDDM_WALL="$HOME/.config/hypr/wallpapers/dark-theme/dark-wall1.jpg"
-    echo -e "  ${YELLOW}[WARN]${NC} No live wallpapers, using dark theme fallback"
+    echo -e "  ${YELLOW}[WARN]${NC} Astronaut theme not found, using default SDDM theme"
 fi
-
-sudo mkdir -p /usr/share/sddm/themes/sddm-astronaut-theme
-sudo cp "$SDDM_WALL" /usr/share/sddm/themes/sddm-astronaut-theme/background.jpg 2>/dev/null || true
-echo -e "  ${GREEN}[OK]${NC} SDDM theme configured"
 
 # Install gdown for wallpaper downloads
 echo -e "${CYAN}[*] Installing gdown for wallpaper downloads...${NC}"
 if ! command -v gdown &> /dev/null; then
-    pip install --user gdown
+    pip install --user gdown || echo -e "  ${YELLOW}[WARN]${NC} Failed to install gdown"
     export PATH="$HOME/.local/bin:$PATH"
-    echo -e "  ${GREEN}[OK]${NC} gdown installed"
 else
     echo -e "  ${GREEN}[OK]${NC} gdown already installed"
 fi
@@ -227,22 +274,25 @@ fi
 echo -e "${CYAN}[*] Downloading live wallpapers from Google Drive...${NC}"
 GDRIVE_FOLDER="https://drive.google.com/drive/folders/1oS6aUxoW6DGoqzu_S3pVBlgicGPgIoYq"
 
-gdown --folder "$GDRIVE_FOLDER" -O ~/.config/hypr/wallpapers/live-wallpapers/ --remaining-ok 2>/dev/null
-
-if [ $? -eq 0 ]; then
-    echo -e "  ${GREEN}[OK]${NC} Live wallpapers downloaded successfully!"
+if command -v gdown &> /dev/null; then
+    gdown --folder "$GDRIVE_FOLDER" -O ~/.config/hypr/wallpapers/live-wallpapers/ --remaining-ok 2>/dev/null
+    if [ $? -eq 0 ]; then
+        echo -e "  ${GREEN}[OK]${NC} Live wallpapers downloaded successfully!"
+    else
+        echo -e "  ${YELLOW}[WARN]${NC} Live wallpaper download failed. Will use local themes as fallback."
+    fi
 else
-    echo -e "  ${YELLOW}[WARN]${NC} Live wallpaper download failed. Will use local dark/light themes as fallback."
+    echo -e "  ${YELLOW}[WARN]${NC} gdown not available, skipping live wallpaper download"
 fi
 
-# Copy configs
+# Copy configs FIRST (but don't overwrite hyprpaper.conf later)
 echo -e "${CYAN}[*] Copying configuration files...${NC}"
 if [ -d ".config/hypr" ]; then
-    cp -r .config/hypr/* ~/.config/hypr/ 2>/dev/null && echo -e "  ${GREEN}[OK]${NC} Hyprland configs copied"
-    # Ensure hyprlock.conf exists
-    if [ ! -f "$HOME/.config/hypr/hyprlock.conf" ]; then
-        echo -e "  ${YELLOW}[WARN]${NC} hyprlock.conf not found, creating default..."
-    fi
+    # Copy everything EXCEPT hyprpaper.conf (we'll generate it)
+    find .config/hypr -type f ! -name "hyprpaper.conf" -exec cp {} ~/.config/hypr/ \; 2>/dev/null
+    # Copy directories
+    cp -r .config/hypr/wallpapers ~/.config/hypr/ 2>/dev/null || true
+    echo -e "  ${GREEN}[OK]${NC} Hyprland configs copied"
 fi
 if [ -d ".config/waybar" ]; then
     cp -r .config/waybar/* ~/.config/waybar/ 2>/dev/null && echo -e "  ${GREEN}[OK]${NC} Waybar configs copied"
@@ -272,7 +322,7 @@ echo -e "${CYAN}[*] Configuring wallpaper...${NC}"
 FALLBACK_WALLPAPER="$HOME/.config/hypr/wallpapers/dark-theme/dark-wall1.jpg"
 
 # Check if live wallpapers were downloaded successfully
-if [ "$(ls -A ~/.config/hypr/wallpapers/live-wallpapers/ 2>/dev/null)" ]; then
+if [ -d ~/.config/hypr/wallpapers/live-wallpapers ] && [ "$(ls -A ~/.config/hypr/wallpapers/live-wallpapers/ 2>/dev/null)" ]; then
     LIVE_WALL=$(ls ~/.config/hypr/wallpapers/live-wallpapers/ | head -n1)
     DEFAULT_WALLPAPER="$HOME/.config/hypr/wallpapers/live-wallpapers/$LIVE_WALL"
     echo -e "  ${GREEN}[OK]${NC} Using live wallpaper: $LIVE_WALL"
@@ -290,12 +340,21 @@ ipc = on
 EOF
 echo -e "  ${GREEN}[OK]${NC} hyprpaper.conf configured with: $(basename "$DEFAULT_WALLPAPER")"
 
+# Set SDDM wallpaper (live if available, else dark)
+if [ -d "/usr/share/sddm/themes/sddm-astronaut-theme" ]; then
+    echo -e "${CYAN}[*] Setting SDDM wallpaper...${NC}"
+    if [ -f "$DEFAULT_WALLPAPER" ]; then
+        sudo cp "$DEFAULT_WALLPAPER" /usr/share/sddm/themes/sddm-astronaut-theme/background.jpg 2>/dev/null && \
+            echo -e "  ${GREEN}[OK]${NC} SDDM wallpaper set" || \
+            echo -e "  ${YELLOW}[WARN]${NC} Failed to copy SDDM wallpaper"
+    fi
+fi
+
 # SDDM is enabled with Hyprland as default
-# User will get a graphical login screen with Hyprland pre-selected
 echo -e "${CYAN}[*] Display Manager configured${NC}"
 echo -e "  ${GREEN}[OK]${NC} SDDM will provide graphical login screen"
 echo -e "  ${GREEN}[OK]${NC} Hyprland is the default session"
-echo -e "  ${GREEN}[OK]${NC} hyprlock still works for locking (SUPER+L)"
+echo -e "  ${GREEN}[OK]${NC} hyprlock works for locking (SUPER+L)"
 
 echo ""
 echo -e "${PURPLE}========================================${NC}"
@@ -320,6 +379,7 @@ echo ""
 echo -e "${PURPLE}After logging in:${NC}"
 echo -e "  - Test btop: ${CYAN}btop${NC}"
 echo -e "  - Test neofetch: ${CYAN}neofetch${NC}"
+echo -e "  - Lock screen: ${CYAN}SUPER + L${NC}"
 echo -e "  - Reload Hyprland: ${CYAN}hyprctl reload${NC}"
 echo ""
 echo -e "${GREEN}Enjoy your cyberpunk rice!${NC}"

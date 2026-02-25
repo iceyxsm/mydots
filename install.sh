@@ -47,6 +47,7 @@ echo -e "${CYAN}[*] Installing base Hyprland packages...${NC}"
 BASE_PACKAGES=(
     "hyprland"
     "hyprpaper"
+    "hyprlock"
     "waybar"
     "kitty"
     "wofi"
@@ -191,6 +192,10 @@ fi
 echo -e "${CYAN}[*] Copying configuration files...${NC}"
 if [ -d ".config/hypr" ]; then
     cp -r .config/hypr/* ~/.config/hypr/ 2>/dev/null && echo -e "  ${GREEN}[OK]${NC} Hyprland configs copied"
+    # Ensure hyprlock.conf exists
+    if [ ! -f "$HOME/.config/hypr/hyprlock.conf" ]; then
+        echo -e "  ${YELLOW}[WARN]${NC} hyprlock.conf not found, creating default..."
+    fi
 fi
 if [ -d ".config/waybar" ]; then
     cp -r .config/waybar/* ~/.config/waybar/ 2>/dev/null && echo -e "  ${GREEN}[OK]${NC} Waybar configs copied"

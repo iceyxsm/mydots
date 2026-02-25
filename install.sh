@@ -143,6 +143,11 @@ TOOLS=(
     "file-roller"
     "pavucontrol"
     "network-manager-applet"
+    "wireless_tools"
+    "iw"
+    "iwd"
+    "linux-firmware"
+    "wireless-regdb"
     "bluez"
     "bluez-utils"
     "blueman"
@@ -186,6 +191,12 @@ done
 echo -e "${CYAN}[*] Enabling system services...${NC}"
 sudo systemctl enable --now bluetooth.service || echo -e "  ${YELLOW}[WARN]${NC} Bluetooth service failed"
 sudo systemctl enable --now NetworkManager.service || echo -e "  ${YELLOW}[WARN]${NC} NetworkManager failed"
+
+# Configure NetworkManager to use iwd for WiFi (faster than wpa_supplicant)
+echo -e "${CYAN}[*] Configuring NetworkManager WiFi backend...${NC}"
+sudo mkdir -p /etc/NetworkManager/NetworkManager.conf
+echo -e "[device]\nwifi.backend=iwd" | sudo tee /etc/NetworkManager/NetworkManager.conf.d/wifi-backend.conf > /dev/null
+echo -e "  ${GREEN}[OK]${NC} Using iwd for WiFi (faster connection)"
 
 # Enable SDDM display manager
 echo -e "${CYAN}[*] Enabling SDDM display manager...${NC}"

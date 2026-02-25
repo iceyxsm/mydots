@@ -481,16 +481,70 @@ Exec=/usr/bin/Hyprland
 Type=Application
 DesktopNames=Hyprland
 XDG_CURRENT_DESKTOP=Hyprland
+NoDisplay=false
 EOF
     sudo chmod 644 /usr/share/wayland-sessions/hyprland.desktop
     echo -e "  ${GREEN}[OK] hyprland.desktop created${NC}"
 fi
 
-# Configure SDDM to use Hyprland as default session
-echo -e "${CYAN}[*] Configuring SDDM default session...${NC}"
+# Fix SDDM to use correct session file
+echo -e "${GREEN}[*] Creating SDDM session fix...${NC}"
 sudo mkdir -p /etc/sddm.conf.d
-echo -e "[Autologin]\nSession=hyprland.desktop" | sudo tee /etc/sddm.conf.d/hyprland.conf > /dev/null
-echo -e "  ${GREEN}[OK]${NC} Hyprland set as default session"
+cat | sudo tee /etc/sddm.conf.d/10-wayland.conf > /dev/null << 'EOF'
+[General]
+DisplayServer=wayland
+GreeterEnvironment=QT_QPA_PLATFORM=wayland
+
+[Wayland]
+CompositorCommand=Hyprland
+EOF
+
+# Create wrapper script to debug Hyprland startup
+echo -e "${GREEN}[*] Creating Hyprland debug wrapper...${NC}"
+sudo tee /usr/local/bin/hyprland-launch.sh > /dev/null << 'EOF'
+#!/bin/bash
+# Hyprland launch wrapper with logging
+
+export WLR_NO_HARDWARE_CURSORS=1
+export WLR_RENDERER_ALLOW_SOFTWARE=1
+
+# NVIDIA specific (if applicable)
+if [ -d /proc/driver/nvidia ]; then
+    export WLR_NO_HARDWARE_CURSORS=1
+    export __GLX_VENDOR_LIBRARY_NAME=nvidia
+    export GBM_BACKEND=nvidia-drm
+fi
+
+# Log file
+LOG_FILE="$HOME/.local/share/hyprland/hyprland-launch.log"
+mkdir -p "$(dirname "$LOG_FILE")"
+
+echo "$(date): Starting Hyprland..." >> "$LOG_FILE"
+echo "$(date): Display: $DISPLAY" >> "$LOG_FILE"
+echo "$(date): Wayland Display: $WAYLAND_DISPLAY" >> "$LOG_FILE"
+
+exec /usr/bin/Hyprland "$@" 2>&1 | tee -a "$LOG_FILE"
+EOF
+sudo chmod +x /usr/local/bin/hyprland-launch.sh
+
+# Configure SDDM to use Hyprland as default session
+echo -e "${GREEN}[*] Configuring SDDM default session...${NC}"
+sudo mkdir -p /etc/sddm.conf.d
+
+# Main SDDM config
+cat | sudo tee /etc/sddm.conf.d/hyprland.conf > /dev/null << 'EOF'
+[Autologin]
+Session=hyprland.desktop
+
+[General]
+DefaultSession=hyprland.desktop
+DisplayServer=wayland
+
+[Theme]
+Current=sddm-astronaut-theme
+EOF
+
+echo -e "  ${GREEN}[OK] Hyprland set as default session${NC}"
 
 # Configure NetworkManager WiFi backend
 echo -e "${CYAN}[*] Configuring NetworkManager WiFi backend...${NC}"
@@ -651,6 +705,67 @@ fi
 echo -e "${GREEN}[*] Setting home directory permissions...${NC}"
 sudo chown -R "$USER:$USER" "$HOME" 2>/dev/null || true
 
+# Verify Hyprland binary exists and works
+echo -e "${GREEN}[*] Verifying Hyprland installation...${NC}"
+if [ -x "/usr/bin/Hyprland" ]; then
+    echo -e "  ${GREEN}[OK] Hyprland binary found${NC}"
+else
+    echo -e "  ${GREEN}[WARN] Hyprland binary not found at /usr/bin/Hyprland${NC}"
+    echo -e "  ${GREEN}[WARN] Trying to locate...${NC}"
+    HYPRLAND_PATH=$(which Hyprland 2>/dev/null || find /usr -name "Hyprland" -type f 2>/dev/null | head -n1)
+    if [ -n "$HYPRLAND_PATH" ]; then
+        echo -e "  ${GREEN}[OK] Found at: $HYPRLAND_PATH${NC}"
+        sudo ln -sf "$HYPRLAND_PATH" /usr/bin/Hyprland 2>/dev/null || true
+    fi
+fi
+
+# Create minimal valid hyprland config if missing
+if [ ! -f "$HOME/.config/hypr/hyprland.conf" ]; then
+    echo -e "${GREEN}[*] Creating default hyprland.conf...${NC}"
+    mkdir -p "$HOME/.config/hypr"
+    cat > "$HOME/.config/hypr/hyprland.conf" << 'EOF'
+# Minimal Hyprland Config
+monitor=,preferred,auto,1
+
+exec-once = waybar
+exec-once = hyprpaper
+
+input {
+    kb_layout = us
+    follow_mouse = 1
+}
+
+general {
+    gaps_in = 5
+    gaps_out = 10
+    border_size = 2
+    col.active_border = rgba(ff00ffee)
+    col.inactive_border = rgba(595959aa)
+    layout = dwindle
+}
+
+decoration {
+    rounding = 10
+    blur {
+        enabled = true
+        size = 3
+        passes = 1
+    }
+}
+
+animations {
+    enabled = true
+}
+
+bind = SUPER, RETURN, exec, kitty
+bind = SUPER, Q, killactive,
+bind = SUPER, M, exit,
+bind = SUPER, E, exec, thunar
+bind = SUPER, D, exec, wofi --show drun
+EOF
+    echo -e "  ${GREEN}[OK] Default config created${NC}"
+fi
+
 # SDDM is enabled with Hyprland as default
 echo -e "${GREEN}[*] Display Manager configured${NC}"
 echo -e "  ${GREEN}[OK] SDDM will provide graphical login screen${NC}"
@@ -684,7 +799,19 @@ echo -e "  - Screenshot (region): SUPER + SHIFT + S"
 echo -e "  - Clipboard history: SUPER + V"
 echo ""
 
+# Troubleshooting info
+echo ""
+echo -e "${GREEN}========================================${NC}"
+echo -e "${GREEN}TROUBLESHOOTING:${NC}"
+echo -e "${GREEN}If login loop occurs:${NC}"
+echo -e "  1. Press Ctrl+Alt+F2 to switch to TTY2"
+echo -e "  2. Login with your username/password"
+echo -e "  3. Check logs: cat ~/.local/share/hyprland/hyprland.log"
+echo -e "  4. Or try: sudo systemctl status sddm"
+echo -e "${GREEN}========================================${NC}"
+
 # Ask for reboot
+echo ""
 echo -e "${GREEN}Do you want to reboot now? (y/N): ${NC}"
 read -r reboot_choice
 if [[ "$reboot_choice" =~ ^[Yy]$ ]]; then

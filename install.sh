@@ -641,10 +641,16 @@ if [ "$MODE" != "minimal" ]; then
     # Download wallpapers from Google Drive
     if command -v gdown &> /dev/null; then
         echo -e "${GREEN}[*] Downloading live wallpapers from Google Drive...${NC}"
+        echo -e "  ${GREEN}This may take a few minutes depending on your internet speed...${NC}"
         GDRIVE_FOLDER="https://drive.google.com/drive/folders/1oS6aUxoW6DGoqzu_S3pVBlgicGPgIoYq"
-        gdown --folder "$GDRIVE_FOLDER" -O ~/.config/hypr/wallpapers/live-wallpapers/ --remaining-ok 2>/dev/null
+        
+        # Show progress (remove 2>/dev/null to see output)
+        gdown --folder "$GDRIVE_FOLDER" -O ~/.config/hypr/wallpapers/live-wallpapers/ --remaining-ok
+        
         if [ $? -eq 0 ]; then
-            echo -e "  ${GREEN}[OK] Live wallpapers downloaded successfully!${NC}"
+            # Count downloaded files
+            WALL_COUNT=$(ls -1 ~/.config/hypr/wallpapers/live-wallpapers/ 2>/dev/null | wc -l)
+            echo -e "  ${GREEN}[OK] Downloaded $WALL_COUNT wallpapers successfully!${NC}"
         else
             echo -e "  ${GREEN}[WARN] Live wallpaper download failed. Will use local themes as fallback.${NC}"
         fi

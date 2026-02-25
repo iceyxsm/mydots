@@ -1,6 +1,7 @@
 #!/bin/bash
 
-# Cyberpunk Hyprland Rice Installer
+# Cyberpunk Theme Installer
+# Made by iceyxsm
 # Modes: --finstall (fresh), -finstall (full/default), -minstall (minimal)
 
 # Request sudo access FIRST (before anything else)
@@ -42,7 +43,8 @@ for arg in "$@"; do
             shift
             ;;
         -h|--help)
-            echo "Cyberpunk Hyprland Rice Installer"
+            echo "Cyberpunk Theme Installer"
+            echo "Made by iceyxsm"
             echo ""
             echo "Usage: ./install.sh [OPTION]"
             echo ""
@@ -66,8 +68,9 @@ for arg in "$@"; do
 done
 
 echo -e "${PURPLE}========================================${NC}"
-echo -e "${PINK}  Cyberpunk Hyprland Rice Installer${NC}"
-echo -e "${CYAN}  Mode: ${MODE}${NC}"
+echo -e "${PINK}    Cyberpunk Theme Installer${NC}"
+echo -e "${CYAN}       Made by iceyxsm${NC}"
+echo -e "${CYAN}       Mode: ${MODE}${NC}"
 echo -e "${PURPLE}========================================${NC}"
 echo ""
 

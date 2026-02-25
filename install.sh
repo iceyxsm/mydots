@@ -488,7 +488,7 @@ sudo rm -f /etc/sddm.conf.d/hyprland.conf 2>/dev/null || true
 sudo rm -f /etc/sddm.conf.d/10-wayland.conf 2>/dev/null || true
 
 # Create proper SDDM config
-cat | sudo tee /etc/sddm.conf.d/99-hyprland.conf > /dev/null << 'EOF'
+sudo tee /etc/sddm.conf.d/99-hyprland.conf > /dev/null << 'EOF'
 [General]
 DisplayServer=x11
 GreeterEnvironment=QT_QPA_PLATFORM=xcb
@@ -539,7 +539,7 @@ fi
 EOF
 
 # For system
-cat | sudo tee /etc/environment.d/99-hyprland.conf > /dev/null << 'EOF'
+sudo tee /etc/environment.d/99-hyprland.conf > /dev/null << 'EOF'
 WLR_NO_HARDWARE_CURSORS=1
 WLR_RENDERER_ALLOW_SOFTWARE=1
 WLR_DRM_NO_ATOMIC=1

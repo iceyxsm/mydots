@@ -659,11 +659,17 @@ if [ "$MODE" != "minimal" ]; then
             echo -e "  ${GREEN}This may take a few minutes depending on your internet speed...${NC}"
             GDRIVE_FOLDER="https://drive.google.com/drive/folders/1oS6aUxoW6DGoqzu_S3pVBlgicGPgIoYq"
             
-            # Show progress
-            gdown --folder "$GDRIVE_FOLDER" -O "$LIVE_DIR" --remaining-ok
+            # Show progress and capture output
+            echo -e "  ${GREEN}Running gdown...${NC}"
+            gdown --folder "$GDRIVE_FOLDER" -O "$LIVE_DIR" --remaining-ok 2>&1
+            
+            echo -e "  ${GREEN}Download complete. Checking results...${NC}"
+            echo -e "  ${GREEN}Listing contents of $LIVE_DIR:${NC}"
+            ls -la "$LIVE_DIR" 2>/dev/null || echo -e "  ${GREEN}Directory empty or not accessible${NC}"
             
             # Count downloaded files
             NEW_COUNT=$(find "$LIVE_DIR" -type f 2>/dev/null | wc -l)
+            echo -e "  ${GREEN}File count: $NEW_COUNT${NC}"
             if [ "$NEW_COUNT" -gt 0 ]; then
                 echo -e "  ${GREEN}[OK] Downloaded $NEW_COUNT wallpapers successfully!${NC}"
             else
@@ -708,10 +714,16 @@ if [ "$MODE" != "minimal" ]; then
     LIVE_DIR="$HOME/.config/hypr/wallpapers/live-wallpapers"
     DARK_DIR="$HOME/.config/hypr/wallpapers/dark-theme"
     
+    echo -e "    ${GREEN}LIVE_DIR = $LIVE_DIR${NC}"
+    echo -e "    ${GREEN}DARK_DIR = $DARK_DIR${NC}"
+    
     # Debug: show what's in the folders
     if [ -d "$LIVE_DIR" ]; then
         LIVE_COUNT=$(ls -1 "$LIVE_DIR" 2>/dev/null | wc -l)
         echo -e "    ${GREEN}Found $LIVE_COUNT files in live-wallpapers/${NC}"
+        ls -1 "$LIVE_DIR" 2>/dev/null | head -5
+    else
+        echo -e "    ${GREEN}live-wallpapers directory does NOT exist${NC}"
     fi
     if [ -d "$DARK_DIR" ]; then
         DARK_COUNT=$(ls -1 "$DARK_DIR" 2>/dev/null | wc -l)

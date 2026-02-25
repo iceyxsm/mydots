@@ -552,7 +552,7 @@ echo -e "  ${GREEN}[OK] Environment config created${NC}"
 
 # Configure NetworkManager WiFi backend
 echo -e "${GREEN}[*] Configuring NetworkManager WiFi backend...${NC}"
-sudo mkdir -p /etc/NetworkManager/NetworkManager.conf
+sudo mkdir -p /etc/NetworkManager/NetworkManager.conf.d
 echo -e "[device]\nwifi.backend=iwd" | sudo tee /etc/NetworkManager/NetworkManager.conf.d/wifi-backend.conf > /dev/null
 echo -e "  ${GREEN}[OK] Using iwd for WiFi (faster connection)${NC}"
 

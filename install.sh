@@ -930,9 +930,14 @@ if [ "$MODE" != "minimal" ]; then
     
     # Check for live wallpapers first
     echo -e "  ${GREEN}Checking wallpaper folders...${NC}"
-    LIVE_DIR="$HOME/.config/hypr/wallpapers/live-wallpapers"
-    DARK_DIR="$HOME/.config/hypr/wallpapers/dark-theme"
-    LIGHT_DIR="$HOME/.config/hypr/wallpapers/light-theme"
+    # Fix: Use actual user's home, not root's home when running with sudo
+    ACTUAL_HOME=$(eval echo ~$(whoami))
+    if [ "$ACTUAL_HOME" = "~root" ] || [ -z "$ACTUAL_HOME" ]; then
+        ACTUAL_HOME="/home/$(logname 2>/dev/null || echo 'shiv')"
+    fi
+    LIVE_DIR="$ACTUAL_HOME/.config/hypr/wallpapers/live-wallpapers"
+    DARK_DIR="$ACTUAL_HOME/.config/hypr/wallpapers/dark-theme"
+    LIGHT_DIR="$ACTUAL_HOME/.config/hypr/wallpapers/light-theme"
     
     # Check all wallpaper folders
     TOTAL_WALLPAPERS=0
@@ -1001,22 +1006,24 @@ EOF
             echo -e "${GREEN}[*] Setting SDDM wallpaper...${NC}"
             
             # Check for video wallpapers in downloaded folder
-            LIVE_DIR="$HOME/.config/hypr/wallpapers/live-wallpapers"
+            # Use the actual user's home, not root's home (when running with sudo)
+            ACTUAL_HOME=$(eval echo ~$(whoami))
+            if [ "$ACTUAL_HOME" = "~root" ] || [ -z "$ACTUAL_HOME" ]; then
+                ACTUAL_HOME="/home/$(logname 2>/dev/null || echo 'shiv')"
+            fi
+            LIVE_DIR="$ACTUAL_HOME/.config/hypr/wallpapers/live-wallpapers"
             VIDEO_WALL=""
             echo -e "  ${GREEN}Checking for videos in: $LIVE_DIR${NC}"
             if [ -d "$LIVE_DIR" ]; then
-                # List all files for debugging
-                echo -e "  ${GREEN}Files in folder:${NC}"
-                ls -la "$LIVE_DIR" 2>/dev/null | head -10
                 # Get the FIRST video file found (alphabetically sorted)
                 VIDEO_WALL=$(find "$LIVE_DIR" -maxdepth 1 -type f \( -iname "*.mp4" -o -iname "*.webm" -o -iname "*.mkv" -o -iname "*.mov" -o -iname "*.avi" \) 2>/dev/null | sort | head -n1)
                 if [ -n "$VIDEO_WALL" ]; then
                     echo -e "  ${GREEN}[OK] Found video: $(basename "$VIDEO_WALL")${NC}"
                 else
-                    echo -e "  ${YELLOW}[WARN] No video files found in $LIVE_DIR${NC}"
+                    echo -e "  ${YELLOW}[WARN] No video files found${NC}"
                 fi
             else
-                echo -e "  ${YELLOW}[WARN] Folder $LIVE_DIR does not exist${NC}"
+                echo -e "  ${YELLOW}[WARN] Folder does not exist: $LIVE_DIR${NC}"
             fi
             
             # Find the active theme config file

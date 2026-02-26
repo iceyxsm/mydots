@@ -244,6 +244,7 @@ BASE_PACKAGES=(
     "qt6-wayland"
     "polkit-kde-agent"
     "sddm"
+    "mpv"  # For live wallpapers
 )
 
 for pkg in "${BASE_PACKAGES[@]}"; do

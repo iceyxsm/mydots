@@ -187,7 +187,7 @@ cat /etc/sddm.conf.d/99-hyprland.conf
 
 ## Credits & Thanks
 
-- **Original Concept & Inspiration**: [StealthIQ/dotfiles](https://github.com/StealthIQ/dotfiles) - Base dotfiles structure and setup
+- **Inspiration**: [StealthIQ/dotfiles](https://github.com/StealthIQ/dotfiles) - Base dotfiles structure and setup
 - **Hyprland**: [hyprwm/Hyprland](https://github.com/hyprwm/Hyprland) - The compositor
 - **Rose Pine Theme**: [rose-pine/rose-pine-theme](https://github.com/rose-pine) - Color palette
 - **SDDM Astronaut Theme**: [Keyitdev/sddm-astronaut-theme](https://github.com/Keyitdev/sddm-astronaut-theme) - Login theme

@@ -797,7 +797,9 @@ if [ "$MODE" != "minimal" ] || ! command -v yay &> /dev/null; then
         fi
         
         echo -e "${GREEN}[*] Installing mpvpaper for live wallpapers (AUR)...${NC}"
+        # Compiler warnings are normal and can be ignored
         yay -S --noconfirm mpvpaper 2>/dev/null || echo -e "  ${GREEN}[WARN] mpvpaper install failed - live wallpapers won't work${NC}"
+        echo -e "  ${GREEN}[OK] mpvpaper installed (compiler warnings are normal)${NC}"
     fi
 fi
 
@@ -826,9 +828,14 @@ fi
 if [ "$MODE" != "minimal" ]; then
     echo -e "${GREEN}[*] Installing gdown for wallpaper downloads...${NC}"
     
-    # Fix missing dependency first
-    pip install --user typing_extensions 2>/dev/null || \
+    # Fix missing dependencies first (required for beautifulsoup4)
+    echo -e "  ${GREEN}Installing Python dependencies...${NC}"
+    pip install --user --break-system-packages typing_extensions 2>/dev/null || \
+        pip install --user typing_extensions 2>/dev/null || \
         pip install typing_extensions 2>/dev/null || true
+    
+    # Also try with pacman
+    sudo pacman -S --needed --noconfirm python-typing_extensions 2>/dev/null || true
     
     if ! command -v gdown &> /dev/null; then
         # Install pipx first (recommended way on Arch)

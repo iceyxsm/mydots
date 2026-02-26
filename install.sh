@@ -888,6 +888,7 @@ EOF
 [General]
 Background="background.mp4"
 FillMode="PreserveAspectCrop"
+FormPosition="left"
 EOF
                 
                 # Also update the main theme config
@@ -905,6 +906,7 @@ EOF
 [General]
 Background="background.jpg"
 FillMode="PreserveAspectCrop"
+FormPosition="left"
 EOF
                 
                 # Also update the main theme config

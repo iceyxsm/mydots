@@ -928,16 +928,43 @@ if [ -f /etc/sddm.conf ]; then
     cp /etc/sddm.conf /etc/sddm.conf.backup.$(date +%Y%m%d) 2>/dev/null || true
 fi
 
-# Disable SDDM (and others) just to be sure
-echo -e "${GREEN}[*] Disabling other display managers...${NC}"
+# Disable ALL other display managers thoroughly
+echo -e "${GREEN}[*] Disabling all other display managers...${NC}"
 for dm in $DMS; do
+    # Stop if running
+    systemctl stop $dm 2>/dev/null || true
+    # Disable completely
     systemctl disable $dm 2>/dev/null || true
+    # Also disable any socket activation
+    systemctl disable $dm.socket 2>/dev/null || true
+    # Mask to prevent accidental start
+    systemctl mask $dm 2>/dev/null || true
+    echo -e "  ${GREEN}✓ $dm disabled${NC}"
 done
+
+# Ensure graphical.target only uses custom-dm
+echo -e "${GREEN}[*] Setting graphical.target to use Custom DM only...${NC}"
+systemctl set-default graphical.target 2>/dev/null || true
+
+# Remove any conflicting symlinks
+rm -f /etc/systemd/system/display-manager.service 2>/dev/null || true
+
+# Create direct symlink for custom-dm
+ln -sf /etc/systemd/system/custom-dm.service /etc/systemd/system/display-manager.service 2>/dev/null || true
 
 # Enable custom DM
 echo -e "${GREEN}[*] Enabling Custom DM...${NC}"
 systemctl daemon-reload
 systemctl enable custom-dm
+
+# Verify only custom-dm is enabled
+echo -e "${GREEN}[*] Verifying configuration...${NC}"
+ENABLED_DM=$(systemctl get-default 2>/dev/null)
+echo -e "  Default target: ${CYAN}$ENABLED_DM${NC}"
+if [ -L /etc/systemd/system/display-manager.service ]; then
+    LINK_TARGET=$(readlink /etc/systemd/system/display-manager.service)
+    echo -e "  Display manager: ${CYAN}$LINK_TARGET${NC}"
+fi
 
 echo ""
 echo -e "${GREEN}========================================${NC}"
@@ -954,6 +981,10 @@ fi
 if [ "$IS_VM" = true ]; then
     echo "  VM: Yes (VM-specific optimizations enabled)"
 fi
+echo ""
+echo -e "${CYAN}Status:${NC}"
+echo "  ✓ SDDM/GDM/LightDM disabled (won't auto-start)"
+echo "  ✓ Custom DM enabled as default display manager"
 echo ""
 echo -e "${CYAN}Features:${NC}"
 echo "  ✓ True fullscreen wallpaper (no black bars)"

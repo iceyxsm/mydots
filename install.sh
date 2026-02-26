@@ -261,11 +261,42 @@ HAS_NVIDIA=false
 HAS_INTEL=false
 HAS_AMD=false
 HAS_VMWARE=false
+HAS_VIRTUALBOX=false
+HAS_QEMU=false
+IS_VM=false
 
-# Check for VMware/VirtualBox
+# Check for VMware
 if lspci -nn | grep -i 'vga\|3d\|display' | grep -i vmware &> /dev/null; then
     HAS_VMWARE=true
+    IS_VM=true
     echo -e "  ${GREEN}[OK] VMware SVGA detected (Virtual Machine)${NC}"
+fi
+
+# Check for VirtualBox
+if lspci -nn | grep -i 'vga\|3d\|display' | grep -i virtualbox &> /dev/null || \
+   lspci -nn | grep -i 'vga\|3d\|display' | grep -i "innoTek" &> /dev/null; then
+    HAS_VIRTUALBOX=true
+    IS_VM=true
+    echo -e "  ${GREEN}[OK] VirtualBox detected (Virtual Machine)${NC}"
+fi
+
+# Check for QEMU/KVM
+if lspci -nn | grep -i 'vga\|3d\|display' | grep -i qemu &> /dev/null || \
+   [ -d /sys/class/dmi/id ] && grep -i qemu /sys/class/dmi/id/product_name &> /dev/null; then
+    HAS_QEMU=true
+    IS_VM=true
+    echo -e "  ${GREEN}[OK] QEMU/KVM detected (Virtual Machine)${NC}"
+fi
+
+# Generic VM detection
+if [ -z "$IS_VM" ] && [ -d /sys/class/dmi/id ]; then
+    if grep -iE 'vmware|virtualbox|qemu|kvm|xen' /sys/class/dmi/id/product_name /sys/class/dmi/id/sys_vendor /sys/class/dmi/id/board_vendor &> /dev/null; then
+        IS_VM=true
+        echo -e "  ${GREEN}[OK] Virtual Machine detected${NC}"
+    fi
+fi
+
+if [ "$IS_VM" = true ]; then
     echo -e "  ${GREEN}[WARN] Running in VM - software rendering will be used${NC}"
 fi
 
@@ -484,11 +515,23 @@ sudo systemctl enable sddm.service 2>/dev/null || echo -e "  ${GREEN}[WARN] SDDM
 # Clear SDDM cache to force theme refresh on next boot
 sudo rm -rf /var/lib/sddm/.cache/ 2>/dev/null || true
 
-# Install open-vm-tools for VMware resolution support
-if lspci | grep -i vmware &>/dev/null; then
-    echo -e "  ${GREEN}[*] VMware detected - installing open-vm-tools...${NC}"
-    install_pkg "open-vm-tools" 2>/dev/null || echo -e "  ${GREEN}[WARN] open-vm-tools install failed${NC}"
-    sudo systemctl enable vmtoolsd 2>/dev/null || true
+# Auto-install VM guest tools based on detected hypervisor
+if [ "$IS_VM" = true ]; then
+    echo -e "  ${GREEN}[*] Virtual Machine detected - installing guest tools...${NC}"
+    
+    if [ "$HAS_VMWARE" = true ]; then
+        echo -e "    ${GREEN}Installing VMware Tools...${NC}"
+        install_pkg "open-vm-tools" 2>/dev/null && echo -e "    ${GREEN}[OK] open-vm-tools installed${NC}" || echo -e "    ${GREEN}[WARN] Failed to install open-vm-tools${NC}"
+        sudo systemctl enable vmtoolsd 2>/dev/null || true
+    elif [ "$HAS_VIRTUALBOX" = true ]; then
+        echo -e "    ${GREEN}Installing VirtualBox Guest Utils...${NC}"
+        install_pkg "virtualbox-guest-utils" 2>/dev/null && echo -e "    ${GREEN}[OK] virtualbox-guest-utils installed${NC}" || echo -e "    ${GREEN}[WARN] Failed to install virtualbox-guest-utils${NC}"
+        sudo systemctl enable vboxservice 2>/dev/null || true
+    elif [ "$HAS_QEMU" = true ]; then
+        echo -e "    ${GREEN}Installing QEMU Guest Agent...${NC}"
+        install_pkg "qemu-guest-agent" 2>/dev/null && echo -e "    ${GREEN}[OK] qemu-guest-agent installed${NC}" || echo -e "    ${GREEN}[WARN] Failed to install qemu-guest-agent${NC}"
+        sudo systemctl enable qemu-guest-agent 2>/dev/null || true
+    fi
 fi
 
 echo -e "  ${GREEN}[OK] SDDM enabled - will be active after reboot${NC}"

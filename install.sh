@@ -477,20 +477,24 @@ echo -e "${GREEN}[*] Enabling system services...${NC}"
 sudo systemctl enable --now bluetooth.service 2>/dev/null || echo -e "  ${GREEN}[WARN] Bluetooth service failed${NC}"
 sudo systemctl enable --now NetworkManager.service 2>/dev/null || echo -e "  ${GREEN}[WARN] NetworkManager failed${NC}"
 
-# Enable SDDM display manager
+# Enable SDDM display manager (but DON'T restart if user is logged in)
 echo -e "${GREEN}[*] Enabling SDDM display manager...${NC}"
 sudo systemctl enable sddm.service 2>/dev/null || echo -e "  ${GREEN}[WARN] SDDM enable failed${NC}"
 
-# Clear SDDM cache to force theme refresh
+# Clear SDDM cache to force theme refresh on next boot
 sudo rm -rf /var/lib/sddm/.cache/ 2>/dev/null || true
 
-# Restart SDDM if it's already running (to apply new theme)
-if systemctl is-active --quiet sddm.service 2>/dev/null; then
-    echo -e "  ${GREEN}[*] Restarting SDDM to apply new theme...${NC}"
-    sudo systemctl restart sddm.service 2>/dev/null || echo -e "  ${GREEN}[WARN] SDDM restart failed (may need manual restart)${NC}"
+# Check if we're in a graphical session - DON'T restart SDDM if we are!
+if [ -n "$DISPLAY" ] || [ -n "$WAYLAND_DISPLAY" ]; then
+    echo -e "  ${GREEN}[OK] SDDM enabled (theme will apply after reboot)${NC}"
+    echo -e "  ${YELLOW}[!] You're in a graphical session - SDDM NOT restarted${NC}"
+else
+    # Only restart if we're in TTY/console, not in a GUI
+    if systemctl is-active --quiet sddm.service 2>/dev/null; then
+        echo -e "  ${GREEN}[*] Restarting SDDM to apply new theme...${NC}"
+        sudo systemctl restart sddm.service 2>/dev/null || echo -e "  ${GREEN}[WARN] SDDM restart failed${NC}"
+    fi
 fi
-
-echo -e "  ${GREEN}[OK] SDDM configured${NC}"
 
 # Verify hyprland.desktop exists
 if [ ! -f "/usr/share/wayland-sessions/hyprland.desktop" ]; then

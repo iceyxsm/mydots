@@ -54,10 +54,8 @@ for arg in "$@"; do
             echo "  -minstall     MINIMAL install - Maintains existing packages"
             echo "                Only installs missing packages, preserves configs"
             echo ""
-            echo "Display Managers (selected interactively):"
-            echo "  1) SDDM        - Modern Qt-based DM with video support"
-            echo "  2) Custom DM   - Python/Qt6 DM with video + true fullscreen support"
-            echo "                  Works on: Real hardware, VMs, NVIDIA/AMD/Intel"
+            echo "Display Manager:"
+            echo "  SDDM - Modern Qt-based DM with video support"
             echo ""
             echo "Examples:"
             echo "  ./install.sh --finstall    # Nuclear option - start fresh"
@@ -81,46 +79,30 @@ if [ "$EUID" -eq 0 ]; then
     exit 1
 fi
 
-# Display Manager Selection
+# Display Manager - Using SDDM only
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}    Select Display Manager${NC}"
+echo -e "${GREEN}    Display Manager: SDDM${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
-echo -e "${CYAN}1) SDDM (default)${NC}"
+echo -e "${CYAN}SDDM Features:${NC}"
 echo "   - Modern Qt-based display manager"
 echo "   - Astronaut theme with video wallpaper support"
-echo "   - Recommended for: Most systems, familiar interface"
-echo ""
-echo -e "${CYAN}2) Custom DM (Python/Qt6)${NC}"
-echo "   - Lightweight custom display manager"
-echo "   - True fullscreen wallpaper (no black bars)"
-echo "   - Video wallpaper support (.mp4, .webm)"
-echo "   - Works on: Real hardware, VMware, VirtualBox, QEMU"
+echo "   - Full hardware and VM support"
 echo ""
 
-# Auto-detect VM for default suggestion
-IS_VM=false
-if lspci 2>/dev/null | grep -iE 'vmware|virtualbox|qemu' &>/dev/null; then
-    IS_VM=true
-    DEFAULT_DM="2"
-    echo -e "${YELLOW}[INFO] Virtual Machine detected - Custom DM recommended${NC}"
-else
-    DEFAULT_DM="1"
+# Always use SDDM
+DISPLAY_MANAGER="sddm"
+
+# Disable Custom DM if it exists
+if systemctl is-enabled custom-dm 2>/dev/null | grep -q "enabled"; then
+    echo -e "${YELLOW}[*] Disabling Custom DM...${NC}"
+    systemctl stop custom-dm 2>/dev/null || true
+    systemctl disable custom-dm 2>/dev/null || true
+    systemctl mask custom-dm 2>/dev/null || true
+    rm -f /etc/systemd/system/display-manager.service
 fi
 
-read -p "Select display manager [1-2] (default: $DEFAULT_DM): " dm_choice
-DM_CHOICE=${dm_choice:-$DEFAULT_DM}
-
-case "$DM_CHOICE" in
-    2)
-        DISPLAY_MANAGER="custom"
-        echo -e "${GREEN}[*] Custom DM selected${NC}"
-        ;;
-    *)
-        DISPLAY_MANAGER="sddm"
-        echo -e "${GREEN}[*] SDDM selected${NC}"
-        ;;
-esac
+echo -e "${GREEN}[*] Using SDDM as display manager${NC}"
 echo ""
 
 # FRESH INSTALL MODE - NUCLEAR OPTION
@@ -1149,46 +1131,10 @@ else
     fi
 fi
 
-# Install Custom DM if selected
-if [ "$DISPLAY_MANAGER" = "custom" ]; then
-    echo -e "${GREEN}[*] Installing Custom Display Manager...${NC}"
-    
-    # Ensure SDDM is fully disabled first
-    sudo systemctl stop sddm 2>/dev/null || true
-    sudo systemctl disable sddm 2>/dev/null || true
-    sudo systemctl mask sddm 2>/dev/null || true
-    
-    # Get the directory where this script is located
-    SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-    CUSTOM_DM_SCRIPT="$SCRIPT_DIR/install-custom-dm.sh"
-    
-    if [ -f "$CUSTOM_DM_SCRIPT" ]; then
-        # Make sure it's executable
-        chmod +x "$CUSTOM_DM_SCRIPT" 2>/dev/null || true
-        sudo bash "$CUSTOM_DM_SCRIPT"
-    else
-        echo -e "${YELLOW}[WARN] install-custom-dm.sh not found at $CUSTOM_DM_SCRIPT${NC}"
-        echo -e "${YELLOW}      Searching in current directory...${NC}"
-        if [ -f "./install-custom-dm.sh" ]; then
-            chmod +x ./install-custom-dm.sh 2>/dev/null || true
-            sudo bash ./install-custom-dm.sh
-        else
-            echo -e "${RED}[ERROR] install-custom-dm.sh not found!${NC}"
-            echo -e "${YELLOW}      Download it from: https://github.com/iceyxsm/mydots${NC}"
-        fi
-    fi
-    echo ""
-fi
-
 # Final summary
 echo -e "${GREEN}[*] Display Manager configured${NC}"
-if [ "$DISPLAY_MANAGER" = "custom" ]; then
-    echo -e "  ${GREEN}[OK] Custom DM (Python/Qt6) will provide graphical login${NC}"
-    echo -e "  ${GREEN}[OK] True fullscreen wallpaper support enabled${NC}"
-else
-    echo -e "  ${GREEN}[OK] SDDM will provide graphical login screen${NC}"
-    echo -e "  ${GREEN}[OK] SDDM supports VIDEO wallpapers (astronaut theme)!${NC}"
-fi
+echo -e "  ${GREEN}[OK] SDDM will provide graphical login screen${NC}"
+echo -e "  ${GREEN}[OK] SDDM supports VIDEO wallpapers (astronaut theme)!${NC}"
 echo -e "  ${GREEN}[OK] Hyprland is the default session${NC}"
 echo -e "  ${GREEN}[OK] hyprlock works for locking (SUPER+L)${NC}"
 echo -e "  ${GREEN}[OK] Video lock screen: SUPER+SHIFT+L (requires mpvpaper)${NC}"
@@ -1227,22 +1173,6 @@ if [ "$DISPLAY_MANAGER" = "sddm" ]; then
     echo -e "  2. Login and run: Hyprland"
     echo -e "  3. Check error message"
     echo ""
-    echo -e "${GREEN}Alternative Display Manager (Custom DM):${NC}"
-    echo -e "  If SDDM wallpaper doesn't show fullscreen or you have issues:"
-    echo -e "  Run: sudo ./install-custom-dm.sh"
-    echo -e "  This installs a Python/Qt6 based DM with true fullscreen support"
-    echo ""
-else
-    echo -e "${GREEN}Custom DM installed:${NC}"
-    echo -e "  - Custom DM provides true fullscreen wallpaper (no black bars)"
-    echo -e "  - To check logs: sudo journalctl -u custom-dm -f"
-    echo -e "  - To switch back to SDDM:"
-    echo -e "    sudo systemctl stop custom-dm"
-    echo -e "    sudo systemctl disable custom-dm"
-    echo -e "    sudo systemctl enable sddm"
-    echo -e "    sudo systemctl start sddm"
-    echo ""
-fi
 
 # Ask for reboot
 echo -e "${GREEN}Do you want to reboot now? (y/N): ${NC}"

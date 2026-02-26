@@ -1156,12 +1156,15 @@ if [ "$DISPLAY_MANAGER" = "custom" ]; then
     CUSTOM_DM_SCRIPT="$SCRIPT_DIR/install-custom-dm.sh"
     
     if [ -f "$CUSTOM_DM_SCRIPT" ]; then
-        sudo "$CUSTOM_DM_SCRIPT"
+        # Make sure it's executable
+        chmod +x "$CUSTOM_DM_SCRIPT" 2>/dev/null || true
+        sudo bash "$CUSTOM_DM_SCRIPT"
     else
         echo -e "${YELLOW}[WARN] install-custom-dm.sh not found at $CUSTOM_DM_SCRIPT${NC}"
         echo -e "${YELLOW}      Searching in current directory...${NC}"
         if [ -f "./install-custom-dm.sh" ]; then
-            sudo ./install-custom-dm.sh
+            chmod +x ./install-custom-dm.sh 2>/dev/null || true
+            sudo bash ./install-custom-dm.sh
         else
             echo -e "${RED}[ERROR] install-custom-dm.sh not found!${NC}"
             echo -e "${YELLOW}      Download it from: https://github.com/iceyxsm/mydots${NC}"

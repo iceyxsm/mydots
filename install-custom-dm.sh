@@ -904,18 +904,38 @@ TimeoutStopSec=5
 WantedBy=graphical.target
 EOF
 
-# Backup SDDM config
-echo -e "${GREEN}[*] Backing up SDDM config...${NC}"
+# Stop ALL running display managers
+echo -e "${GREEN}[*] Stopping all display managers...${NC}"
+
+# List of known display managers to stop
+DMS="sddm gdm gdm3 lightdm lxdm slim xdm ly"
+for dm in $DMS; do
+    if systemctl is-active --quiet $dm 2>/dev/null; then
+        echo -e "  ${YELLOW}Stopping $dm...${NC}"
+        systemctl stop $dm 2>/dev/null || true
+        systemctl disable $dm 2>/dev/null || true
+    fi
+done
+
+# Kill any remaining X11/Wayland sessions on tty1
+echo -e "  ${YELLOW}Cleaning up display processes...${NC}"
+pgrep -f "Xorg|wayland|sddm|gdm" | xargs -r kill -9 2>/dev/null || true
+sleep 1
+
+# Backup SDDM config (if exists)
 if [ -f /etc/sddm.conf ]; then
+    echo -e "${GREEN}[*] Backing up SDDM config...${NC}"
     cp /etc/sddm.conf /etc/sddm.conf.backup.$(date +%Y%m%d) 2>/dev/null || true
 fi
 
-# Stop and disable SDDM
-echo -e "${GREEN}[*] Disabling SDDM...${NC}"
-systemctl stop sddm 2>/dev/null || true
-systemctl disable sddm 2>/dev/null || true
+# Disable SDDM (and others) just to be sure
+echo -e "${GREEN}[*] Disabling other display managers...${NC}"
+for dm in $DMS; do
+    systemctl disable $dm 2>/dev/null || true
+done
 
 # Enable custom DM
+echo -e "${GREEN}[*] Enabling Custom DM...${NC}"
 systemctl daemon-reload
 systemctl enable custom-dm
 

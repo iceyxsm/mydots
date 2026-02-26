@@ -477,24 +477,14 @@ echo -e "${GREEN}[*] Enabling system services...${NC}"
 sudo systemctl enable --now bluetooth.service 2>/dev/null || echo -e "  ${GREEN}[WARN] Bluetooth service failed${NC}"
 sudo systemctl enable --now NetworkManager.service 2>/dev/null || echo -e "  ${GREEN}[WARN] NetworkManager failed${NC}"
 
-# Enable SDDM display manager (but DON'T restart if user is logged in)
+# Enable SDDM display manager (NEVER restart during script - causes logout!)
 echo -e "${GREEN}[*] Enabling SDDM display manager...${NC}"
 sudo systemctl enable sddm.service 2>/dev/null || echo -e "  ${GREEN}[WARN] SDDM enable failed${NC}"
 
 # Clear SDDM cache to force theme refresh on next boot
 sudo rm -rf /var/lib/sddm/.cache/ 2>/dev/null || true
 
-# Check if we're in a graphical session - DON'T restart SDDM if we are!
-if [ -n "$DISPLAY" ] || [ -n "$WAYLAND_DISPLAY" ]; then
-    echo -e "  ${GREEN}[OK] SDDM enabled (theme will apply after reboot)${NC}"
-    echo -e "  ${YELLOW}[!] You're in a graphical session - SDDM NOT restarted${NC}"
-else
-    # Only restart if we're in TTY/console, not in a GUI
-    if systemctl is-active --quiet sddm.service 2>/dev/null; then
-        echo -e "  ${GREEN}[*] Restarting SDDM to apply new theme...${NC}"
-        sudo systemctl restart sddm.service 2>/dev/null || echo -e "  ${GREEN}[WARN] SDDM restart failed${NC}"
-    fi
-fi
+echo -e "  ${GREEN}[OK] SDDM enabled - will be active after reboot${NC}"
 
 # Verify hyprland.desktop exists
 if [ ! -f "/usr/share/wayland-sessions/hyprland.desktop" ]; then
@@ -522,11 +512,8 @@ sudo mkdir -p /etc/sddm.conf.d
 sudo rm -f /etc/sddm.conf.d/hyprland.conf 2>/dev/null || true
 sudo rm -f /etc/sddm.conf.d/10-wayland.conf 2>/dev/null || true
 
-# Remove old theme if it exists (to force fresh install)
-if [ -d "/usr/share/sddm/themes/sddm-astronaut-theme" ]; then
-    echo -e "  ${GREEN}[*] Removing old astronaut theme for fresh install...${NC}"
-    sudo rm -rf /usr/share/sddm/themes/sddm-astronaut-theme
-fi
+# DON'T delete theme while SDDM is running - causes crash/restart!
+# Theme will be updated by yay --rebuildtree flag
 
 # Create proper SDDM config in conf.d
 sudo tee /etc/sddm.conf.d/99-hyprland.conf > /dev/null << 'EOF'

@@ -887,7 +887,7 @@ EOF
                 sudo tee /usr/share/sddm/themes/sddm-astronaut-theme/theme.conf.user > /dev/null << EOF
 [General]
 Background="background.mp4"
-FillMode="Stretch"
+FillMode="PreserveAspectCrop"
 EOF
                 
                 # Also update the main theme config
@@ -904,7 +904,7 @@ EOF
                 sudo tee /usr/share/sddm/themes/sddm-astronaut-theme/theme.conf.user > /dev/null << EOF
 [General]
 Background="background.jpg"
-FillMode="Stretch"
+FillMode="PreserveAspectCrop"
 EOF
                 
                 # Also update the main theme config

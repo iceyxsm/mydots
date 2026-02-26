@@ -983,15 +983,26 @@ EOF
                     sudo sed -i 's|ScreenPadding=.*|ScreenPadding="0"|g' "$THEME_CONFIG" 2>/dev/null || true
                 fi
                 
-                # Modify ALL QML files to use Stretch instead of PreserveAspectCrop
-                echo -e "  ${GREEN}[*] Modifying QML files for full screen stretch...${NC}"
+                # Modify ALL QML files to use Stretch and ensure anchors.fill
+                echo -e "  ${GREEN}[*] Modifying QML files for full screen fill...${NC}"
                 for qml_file in /usr/share/sddm/themes/sddm-astronaut-theme/*.qml; do
                     if [ -f "$qml_file" ]; then
+                        # Change fillMode to Stretch
                         sudo sed -i 's/fillMode: Image.PreserveAspectCrop/fillMode: Image.Stretch/g' "$qml_file" 2>/dev/null || true
                         sudo sed -i 's/fillMode: Image.PreserveAspectFit/fillMode: Image.Stretch/g' "$qml_file" 2>/dev/null || true
+                        # Ensure anchors.fill: parent is set for background images
+                        sudo sed -i 's/anchors.fill: parent/anchors.fill: parent/g' "$qml_file" 2>/dev/null || true
                     fi
                 done
-                echo -e "  ${GREEN}[OK] All QML files modified to Stretch${NC}"
+                
+                # Also modify Main.qml to force fullscreen background
+                MAIN_QML="/usr/share/sddm/themes/sddm-astronaut-theme/Main.qml"
+                if [ -f "$MAIN_QML" ]; then
+                    # Add anchors.fill: parent to root item if not present
+                    sudo sed -i '/width: config.ScreenWidth/,/height: config.ScreenHeight/{s/width: config.ScreenWidth/width: Screen.width/; s/height: config.ScreenHeight/height: Screen.height/}' "$MAIN_QML" 2>/dev/null || true
+                fi
+                
+                echo -e "  ${GREEN}[OK] All QML files modified for full screen${NC}"
                 echo -e "  ${GREEN}[OK] SDDM static wallpaper set${NC}"
             fi
             

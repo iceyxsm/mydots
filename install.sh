@@ -1006,20 +1006,30 @@ EOF
                 THEME_CONFIG=$(find /usr/share/sddm/themes/sddm-astronaut-theme/Themes/ -name "*.conf" 2>/dev/null | head -n1)
             fi
             
-            # NOTE: Video wallpaper code kept for future use but currently using static image
-            # VIDEO_WALL check disabled - using static image for better CropBackground support
-            # To re-enable video: uncomment the block below and remove the static image section
-            
-            # Create theme.conf.user with STATIC image (video code kept below for reference)
-            if [ -n "$DEFAULT_WALLPAPER" ] && [ -f "$DEFAULT_WALLPAPER" ]; then
-                # Using STATIC image for SDDM (better CropBackground support)
-                echo -e "  ${GREEN}[OK] Using STATIC wallpaper for SDDM${NC}"
-                # Fall back to static image
+            # VIDEO WALLPAPER CODE - First video found is used
+            if [ -n "$VIDEO_WALL" ] && [ -f "$VIDEO_WALL" ]; then
+                echo -e "  ${GREEN}[OK] Using VIDEO wallpaper for SDDM${NC}"
+                sudo cp "$VIDEO_WALL" /usr/share/sddm/themes/sddm-astronaut-theme/background.mp4
+                sudo chmod 644 /usr/share/sddm/themes/sddm-astronaut-theme/background.mp4
+                sudo tee /usr/share/sddm/themes/sddm-astronaut-theme/theme.conf.user > /dev/null << 'EOF'
+[General]
+Background="background.mp4"
+FormPosition="left"
+HaveFormBackground="false"
+PartialBlur="false"
+FullBlur="false"
+ScreenWidth=""
+ScreenHeight=""
+ScreenPadding="0"
+EOF
+                echo -e "  ${GREEN}[OK] SDDM video wallpaper set: $(basename "$VIDEO_WALL")${NC}"
+            elif [ -n "$DEFAULT_WALLPAPER" ] && [ -f "$DEFAULT_WALLPAPER" ]; then
+                # Fall back to static image if no video
+                echo -e "  ${GREEN}[OK] Using STATIC wallpaper for SDDM (no video found)${NC}"
                 sudo cp "$DEFAULT_WALLPAPER" /usr/share/sddm/themes/sddm-astronaut-theme/background.jpg 2>/dev/null
                 sudo chmod 644 /usr/share/sddm/themes/sddm-astronaut-theme/background.jpg 2>/dev/null
                 
                 # Create theme.conf.user - Force fullscreen!
-                # Use Qt auto-sizing by leaving dimensions empty
                 sudo tee /usr/share/sddm/themes/sddm-astronaut-theme/theme.conf.user > /dev/null << EOF
 [General]
 Background="background.jpg"
@@ -1040,68 +1050,17 @@ EOF
                 if [ -z "$ACTUAL_RES" ]; then
                     ACTUAL_RES="1920x1080"
                 fi
-                AWIDTH=$(echo $ACTUAL_RES | cut -d'x' -f1)
-                AHEIGHT=$(echo $ACTUAL_RES | cut -d'x' -f2)
                 
-                # Don't replace Main.qml completely - just modify background Image
+                # Modify Main.qml
                 MAIN_QML_FILE="/usr/share/sddm/themes/sddm-astronaut-theme/Main.qml"
                 if [ -f "$MAIN_QML_FILE" ]; then
-                    # Force background Image to fill parent with Stretch
                     sudo sed -i '/Image {/,/fillMode:/{s/fillMode: Image.PreserveAspectCrop/fillMode: Image.Stretch/}' "$MAIN_QML_FILE" 2>/dev/null || true
                     sudo sed -i '/Image {/,/fillMode:/{s/fillMode: Image.PreserveAspectFit/fillMode: Image.Stretch/}' "$MAIN_QML_FILE" 2>/dev/null || true
-                    # Ensure anchors.fill: parent is set
-                    sudo sed -i '/id: backgroundImage/,/^    }/{s/width: .*$/anchors.fill: parent/; s/height: .*$/anchors.fill: parent/}' "$MAIN_QML_FILE" 2>/dev/null || true
                     echo -e "  ${GREEN}[OK] Main.qml background modified to Stretch${NC}"
                 fi
                 
-                # Also update the main theme config (leave ScreenWidth/Height for auto-detect)
-                if [ -f "$THEME_CONFIG" ]; then
-                    sudo sed -i 's|Background=.*|Background="background.jpg"|g' "$THEME_CONFIG" 2>/dev/null || true
-                    sudo sed -i 's|FormPosition=.*|FormPosition="left"|g' "$THEME_CONFIG" 2>/dev/null || true
-                    sudo sed -i 's|ScreenWidth=.*|ScreenWidth=""|g' "$THEME_CONFIG" 2>/dev/null || true
-                    sudo sed -i 's|ScreenHeight=.*|ScreenHeight=""|g' "$THEME_CONFIG" 2>/dev/null || true
-                    sudo sed -i 's|ScreenPadding=.*|ScreenPadding="0"|g' "$THEME_CONFIG" 2>/dev/null || true
-                fi
-                
-                # Modify ALL QML files to use Stretch and ensure anchors.fill
-                echo -e "  ${GREEN}[*] Modifying QML files for full screen fill...${NC}"
-                for qml_file in /usr/share/sddm/themes/sddm-astronaut-theme/*.qml; do
-                    if [ -f "$qml_file" ]; then
-                        # Change fillMode to Stretch
-                        sudo sed -i 's/fillMode: Image.PreserveAspectCrop/fillMode: Image.Stretch/g' "$qml_file" 2>/dev/null || true
-                        sudo sed -i 's/fillMode: Image.PreserveAspectFit/fillMode: Image.Stretch/g' "$qml_file" 2>/dev/null || true
-                        # Ensure anchors.fill: parent is set for background images
-                        sudo sed -i 's/anchors.fill: parent/anchors.fill: parent/g' "$qml_file" 2>/dev/null || true
-                    fi
-                done
-                
-                # Also modify Main.qml to force fullscreen background
-                MAIN_QML="/usr/share/sddm/themes/sddm-astronaut-theme/Main.qml"
-                if [ -f "$MAIN_QML" ]; then
-                    # Add anchors.fill: parent to root item if not present
-                    sudo sed -i '/width: config.ScreenWidth/,/height: config.ScreenHeight/{s/width: config.ScreenWidth/width: Screen.width/; s/height: config.ScreenHeight/height: Screen.height/}' "$MAIN_QML" 2>/dev/null || true
-                fi
-                
-                echo -e "  ${GREEN}[OK] All QML files modified for full screen${NC}"
                 echo -e "  ${GREEN}[OK] SDDM static wallpaper set${NC}"
             fi
-            
-            # VIDEO WALLPAPER CODE (disabled for now - CropBackground doesn't work with videos)
-            # To enable video wallpaper, replace the static image block above with:
-            #
-            # if [ -n "$VIDEO_WALL" ]; then
-            #     sudo cp "$VIDEO_WALL" /usr/share/sddm/themes/sddm-astronaut-theme/background.mp4
-            #     sudo chmod 644 /usr/share/sddm/themes/sddm-astronaut-theme/background.mp4
-            #     sudo tee /usr/share/sddm/themes/sddm-astronaut-theme/theme.conf.user > /dev/null << 'VIDEOF'
-            # [General]
-            # Background="background.mp4"
-            # FormPosition="left"
-            # HaveFormBackground="false"
-            # PartialBlur="false"
-            # FullBlur="false"
-            # VIDEOF
-            #     echo -e "  ${GREEN}[OK] SDDM video wallpaper set${NC}"
-            # fi
             
             # Copy fonts for the theme
             if [ -d "/usr/share/sddm/themes/sddm-astronaut-theme/Fonts" ]; then

@@ -821,12 +821,18 @@ fi
 # Install gdown for wallpaper downloads
 if [ "$MODE" != "minimal" ]; then
     echo -e "${GREEN}[*] Installing gdown for wallpaper downloads...${NC}"
+    
+    # Fix missing dependency first
+    pip install --user typing_extensions 2>/dev/null || \
+        pip install typing_extensions 2>/dev/null || true
+    
     if ! command -v gdown &> /dev/null; then
         # Install pipx first (recommended way on Arch)
         install_pkg "python-pipx"
         # Use pipx to install gdown in isolated environment
         pipx install gdown 2>/dev/null || \
             pip install --user --break-system-packages gdown 2>/dev/null || \
+            pip install --user gdown 2>/dev/null || \
             echo -e "  ${GREEN}[WARN] Failed to install gdown${NC}"
         export PATH="$HOME/.local/bin:$PATH"
     else

@@ -931,13 +931,15 @@ if [ "$MODE" != "minimal" ]; then
     # Check for live wallpapers first
     echo -e "  ${GREEN}Checking wallpaper folders...${NC}"
     # Fix: Use actual user's home, not root's home when running with sudo
-    ACTUAL_HOME=$(eval echo ~$(whoami))
-    if [ "$ACTUAL_HOME" = "~root" ] || [ -z "$ACTUAL_HOME" ]; then
-        ACTUAL_HOME="/home/$(logname 2>/dev/null || echo 'shiv')"
+    if [ -n "$SUDO_USER" ]; then
+        ACTUAL_HOME="/home/$SUDO_USER"
+    else
+        ACTUAL_HOME="$HOME"
     fi
     LIVE_DIR="$ACTUAL_HOME/.config/hypr/wallpapers/live-wallpapers"
     DARK_DIR="$ACTUAL_HOME/.config/hypr/wallpapers/dark-theme"
     LIGHT_DIR="$ACTUAL_HOME/.config/hypr/wallpapers/light-theme"
+    echo -e "  ${GREEN}Home directory: $ACTUAL_HOME${NC}"
     
     # Check all wallpaper folders
     TOTAL_WALLPAPERS=0
@@ -1007,9 +1009,10 @@ EOF
             
             # Check for video wallpapers in downloaded folder
             # Use the actual user's home, not root's home (when running with sudo)
-            ACTUAL_HOME=$(eval echo ~$(whoami))
-            if [ "$ACTUAL_HOME" = "~root" ] || [ -z "$ACTUAL_HOME" ]; then
-                ACTUAL_HOME="/home/$(logname 2>/dev/null || echo 'shiv')"
+            if [ -n "$SUDO_USER" ]; then
+                ACTUAL_HOME="/home/$SUDO_USER"
+            else
+                ACTUAL_HOME="$HOME"
             fi
             LIVE_DIR="$ACTUAL_HOME/.config/hypr/wallpapers/live-wallpapers"
             VIDEO_WALL=""

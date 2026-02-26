@@ -1173,6 +1173,7 @@ if [ "$DISPLAY_MANAGER" = "sddm" ]; then
     echo -e "  2. Login and run: Hyprland"
     echo -e "  3. Check error message"
     echo ""
+fi
 
 # Ask for reboot
 echo -e "${GREEN}Do you want to reboot now? (y/N): ${NC}"

@@ -564,7 +564,11 @@ if [ "$DISPLAY_MANAGER" = "sddm" ]; then
     # Clear SDDM cache to force theme refresh on next boot
     sudo rm -rf /var/lib/sddm/.cache/ 2>/dev/null || true
 else
-    echo -e "${GREEN}[*] Skipping SDDM setup (Custom DM selected)${NC}"
+    echo -e "${GREEN}[*] Custom DM selected - disabling SDDM...${NC}"
+    sudo systemctl stop sddm 2>/dev/null || true
+    sudo systemctl disable sddm 2>/dev/null || true
+    sudo systemctl mask sddm 2>/dev/null || true
+    echo -e "  ${GREEN}[OK] SDDM disabled${NC}"
 fi
 
 # Auto-install VM guest tools based on detected hypervisor
@@ -1141,6 +1145,12 @@ fi
 # Install Custom DM if selected
 if [ "$DISPLAY_MANAGER" = "custom" ]; then
     echo -e "${GREEN}[*] Installing Custom Display Manager...${NC}"
+    
+    # Ensure SDDM is fully disabled first
+    sudo systemctl stop sddm 2>/dev/null || true
+    sudo systemctl disable sddm 2>/dev/null || true
+    sudo systemctl mask sddm 2>/dev/null || true
+    
     if [ -f "./install-custom-dm.sh" ]; then
         sudo ./install-custom-dm.sh
     else

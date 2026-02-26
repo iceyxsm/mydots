@@ -993,10 +993,15 @@ EOF
         if [ "$DISPLAY_MANAGER" = "sddm" ] && [ -d "/usr/share/sddm/themes/sddm-astronaut-theme" ]; then
             echo -e "${GREEN}[*] Setting SDDM wallpaper...${NC}"
             
-            # Check if we have video wallpapers
+            # Check for video wallpapers in downloaded folder
+            LIVE_DIR="$HOME/.config/hypr/wallpapers/live-wallpapers"
             VIDEO_WALL=""
             if [ -d "$LIVE_DIR" ]; then
-                VIDEO_WALL=$(find "$LIVE_DIR" -type f \( -iname "*.mp4" -o -iname "*.webm" \) 2>/dev/null | head -n1)
+                # Get the FIRST video file found (alphabetically sorted)
+                VIDEO_WALL=$(find "$LIVE_DIR" -maxdepth 1 -type f \( -iname "*.mp4" -o -iname "*.webm" -o -iname "*.mkv" -o -iname "*.mov" \) 2>/dev/null | sort | head -n1)
+                if [ -n "$VIDEO_WALL" ]; then
+                    echo -e "  ${GREEN}Found video: $(basename "$VIDEO_WALL")${NC}"
+                fi
             fi
             
             # Find the active theme config file

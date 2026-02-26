@@ -879,41 +879,14 @@ EOF
                 THEME_CONFIG=$(find /usr/share/sddm/themes/sddm-astronaut-theme/Themes/ -name "*.conf" 2>/dev/null | head -n1)
             fi
             
-            # Create theme.conf.user for wallpaper override (astronaut theme supports this)
-            if [ -n "$VIDEO_WALL" ]; then
-                # Use VIDEO wallpaper for SDDM!
-                echo -e "  ${GREEN}[OK] Using VIDEO wallpaper for SDDM!${NC}"
-                sudo cp "$VIDEO_WALL" /usr/share/sddm/themes/sddm-astronaut-theme/background.mp4 2>/dev/null
-                sudo chmod 644 /usr/share/sddm/themes/sddm-astronaut-theme/background.mp4 2>/dev/null
-                
-                # Create theme.conf.user with video background - Stretch to fill screen!
-                sudo tee /usr/share/sddm/themes/sddm-astronaut-theme/theme.conf.user > /dev/null << EOF
-[General]
-Background="background.mp4"
-CropBackground="true"
-FormPosition="left"
-HaveFormBackground="false"
-PartialBlur="false"
-FullBlur="false"
-ScreenWidth=""
-ScreenHeight=""
-BackgroundHorizontalAlignment="center"
-BackgroundVerticalAlignment="center"
-EOF
-                
-                # Also update the main theme config
-                if [ -f "$THEME_CONFIG" ]; then
-                    sudo sed -i 's|Background=.*|Background="background.mp4"|g' "$THEME_CONFIG" 2>/dev/null || true
-                    sudo sed -i 's|FormPosition=.*|FormPosition="left"|g' "$THEME_CONFIG" 2>/dev/null || true
-                    sudo sed -i 's|CropBackground=.*|CropBackground="true"|g' "$THEME_CONFIG" 2>/dev/null || true
-                    sudo sed -i 's|HaveFormBackground=.*|HaveFormBackground="false"|g' "$THEME_CONFIG" 2>/dev/null || true
-                    sudo sed -i 's|PartialBlur=.*|PartialBlur="false"|g' "$THEME_CONFIG" 2>/dev/null || true
-                    sudo sed -i 's|FullBlur=.*|FullBlur="false"|g' "$THEME_CONFIG" 2>/dev/null || true
-                    sudo sed -i 's|ScreenWidth=.*|ScreenWidth=""|g' "$THEME_CONFIG" 2>/dev/null || true
-                    sudo sed -i 's|ScreenHeight=.*|ScreenHeight=""|g' "$THEME_CONFIG" 2>/dev/null || true
-                fi
-                echo -e "  ${GREEN}[OK] SDDM video wallpaper set!${NC}"
-            else
+            # NOTE: Video wallpaper code kept for future use but currently using static image
+            # VIDEO_WALL check disabled - using static image for better CropBackground support
+            # To re-enable video: uncomment the block below and remove the static image section
+            
+            # Create theme.conf.user with STATIC image (video code kept below for reference)
+            if [ -n "$DEFAULT_WALLPAPER" ] && [ -f "$DEFAULT_WALLPAPER" ]; then
+                # Using STATIC image for SDDM (better CropBackground support)
+                echo -e "  ${GREEN}[OK] Using STATIC wallpaper for SDDM${NC}"
                 # Fall back to static image
                 sudo cp "$DEFAULT_WALLPAPER" /usr/share/sddm/themes/sddm-astronaut-theme/background.jpg 2>/dev/null
                 sudo chmod 644 /usr/share/sddm/themes/sddm-astronaut-theme/background.jpg 2>/dev/null
@@ -941,6 +914,23 @@ EOF
                 fi
                 echo -e "  ${GREEN}[OK] SDDM static wallpaper set${NC}"
             fi
+            
+            # VIDEO WALLPAPER CODE (disabled for now - CropBackground doesn't work with videos)
+            # To enable video wallpaper, replace the static image block above with:
+            #
+            # if [ -n "$VIDEO_WALL" ]; then
+            #     sudo cp "$VIDEO_WALL" /usr/share/sddm/themes/sddm-astronaut-theme/background.mp4
+            #     sudo chmod 644 /usr/share/sddm/themes/sddm-astronaut-theme/background.mp4
+            #     sudo tee /usr/share/sddm/themes/sddm-astronaut-theme/theme.conf.user > /dev/null << 'VIDEOF'
+            # [General]
+            # Background="background.mp4"
+            # FormPosition="left"
+            # HaveFormBackground="false"
+            # PartialBlur="false"
+            # FullBlur="false"
+            # VIDEOF
+            #     echo -e "  ${GREEN}[OK] SDDM video wallpaper set${NC}"
+            # fi
             
             # Copy fonts for the theme
             if [ -d "/usr/share/sddm/themes/sddm-astronaut-theme/Fonts" ]; then

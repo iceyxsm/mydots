@@ -892,8 +892,6 @@ EOF
 Background="background.mp4"
 CropBackground="true"
 FormPosition="left"
-PartialBlur="false"
-HaveFormBackground="false"
 EOF
                 
                 # Also update the main theme config
@@ -914,8 +912,6 @@ EOF
 Background="background.jpg"
 CropBackground="true"
 FormPosition="left"
-PartialBlur="false"
-HaveFormBackground="false"
 EOF
                 
                 # Also update the main theme config

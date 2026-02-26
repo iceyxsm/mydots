@@ -883,10 +883,11 @@ EOF
                 sudo cp "$VIDEO_WALL" /usr/share/sddm/themes/sddm-astronaut-theme/background.mp4 2>/dev/null
                 sudo chmod 644 /usr/share/sddm/themes/sddm-astronaut-theme/background.mp4 2>/dev/null
                 
-                # Create theme.conf.user with video background
+                # Create theme.conf.user with video background - Stretch to fill screen!
                 sudo tee /usr/share/sddm/themes/sddm-astronaut-theme/theme.conf.user > /dev/null << EOF
 [General]
 Background="background.mp4"
+FillMode="Stretch"
 EOF
                 
                 # Also update the main theme config
@@ -899,10 +900,11 @@ EOF
                 sudo cp "$DEFAULT_WALLPAPER" /usr/share/sddm/themes/sddm-astronaut-theme/background.jpg 2>/dev/null
                 sudo chmod 644 /usr/share/sddm/themes/sddm-astronaut-theme/background.jpg 2>/dev/null
                 
-                # Create theme.conf.user with image background
+                # Create theme.conf.user with image background - Stretch to fill screen!
                 sudo tee /usr/share/sddm/themes/sddm-astronaut-theme/theme.conf.user > /dev/null << EOF
 [General]
 Background="background.jpg"
+FillMode="Stretch"
 EOF
                 
                 # Also update the main theme config

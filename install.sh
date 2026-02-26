@@ -565,15 +565,30 @@ sudo rm -f /etc/sddm.conf.d/10-wayland.conf 2>/dev/null || true
 # DON'T delete theme while SDDM is running - causes crash/restart!
 # Theme will be updated by yay --rebuildtree flag
 
-# Create proper SDDM config in conf.d
-sudo tee /etc/sddm.conf.d/99-hyprland.conf > /dev/null << 'EOF'
+# Get actual screen resolution
+SCREEN_RES=$(xrandr 2>/dev/null | grep '*' | awk '{print $1}' | head -n1)
+if [ -z "$SCREEN_RES" ]; then
+    SCREEN_RES=$(xdpyinfo 2>/dev/null | grep dimensions | awk '{print $2}' | head -n1)
+fi
+if [ -n "$SCREEN_RES" ]; then
+    SCREEN_WIDTH=$(echo $SCREEN_RES | cut -d'x' -f1)
+    SCREEN_HEIGHT=$(echo $SCREEN_RES | cut -d'x' -f2)
+    echo -e "  ${GREEN}[OK] Detected screen resolution: ${SCREEN_WIDTH}x${SCREEN_HEIGHT}${NC}"
+else
+    SCREEN_WIDTH="1920"
+    SCREEN_HEIGHT="1080"
+    echo -e "  ${YELLOW}[WARN] Could not detect resolution, using ${SCREEN_WIDTH}x${SCREEN_HEIGHT}${NC}"
+fi
+
+# Create proper SDDM config in conf.d with detected resolution
+sudo tee /etc/sddm.conf.d/99-hyprland.conf > /dev/null << EOF
 [General]
 DisplayServer=x11
 GreeterEnvironment=QT_QPA_PLATFORM=xcb
 DefaultSession=hyprland.desktop
 
 [X11]
-# Allow SDDM to detect screen resolution automatically (important for VMs)
+# Force SDDM to use detected screen resolution
 ServerArguments=-nolisten tcp
 
 [Theme]
@@ -946,7 +961,7 @@ EOF
                 sudo chmod 644 /usr/share/sddm/themes/sddm-astronaut-theme/background.jpg 2>/dev/null
                 
                 # Create theme.conf.user - Stretch to fill screen!
-                # NOTE: CropBackground removed - we're modifying Background.qml directly for Stretch
+                # Use detected screen resolution
                 sudo tee /usr/share/sddm/themes/sddm-astronaut-theme/theme.conf.user > /dev/null << EOF
 [General]
 Background="background.jpg"
@@ -954,14 +969,16 @@ FormPosition="left"
 HaveFormBackground="false"
 PartialBlur="false"
 FullBlur="false"
-ScreenWidth=""
-ScreenHeight=""
+ScreenWidth="$SCREEN_WIDTH"
+ScreenHeight="$SCREEN_HEIGHT"
 EOF
                 
-                # Also update the main theme config
+                # Also update the main theme config with detected resolution
                 if [ -f "$THEME_CONFIG" ]; then
                     sudo sed -i 's|Background=.*|Background="background.jpg"|g' "$THEME_CONFIG" 2>/dev/null || true
                     sudo sed -i 's|FormPosition=.*|FormPosition="left"|g' "$THEME_CONFIG" 2>/dev/null || true
+                    sudo sed -i "s|ScreenWidth=.*|ScreenWidth=\"$SCREEN_WIDTH\"|g" "$THEME_CONFIG" 2>/dev/null || true
+                    sudo sed -i "s|ScreenHeight=.*|ScreenHeight=\"$SCREEN_HEIGHT\"|g" "$THEME_CONFIG" 2>/dev/null || true
                 fi
                 
                 # Modify ALL QML files to use Stretch instead of PreserveAspectCrop

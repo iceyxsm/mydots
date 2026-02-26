@@ -6,15 +6,15 @@ A complete Arch Linux Hyprland setup with cyberpunk (Rose Pine) theme, video wal
 
 ## Features
 
-- 🎨 **Rose Pine Cyberpunk Theme** - Purple/pink/cyan color scheme
-- 🎬 **Video Wallpapers** - Live video backgrounds on login AND desktop
-- 🖥️ **Hyprland** - Dynamic tiling Wayland compositor
-- 🔐 **hyprlock** - Beautiful lock screen with video support
-- 📊 **Waybar** - Custom status bar with cyberpunk styling
-- 🖼️ **SDDM** - Custom login theme with video wallpaper support
-- 🎵 **PipeWire** - Modern audio stack
-- 🔔 **Mako** - Notification daemon
-- 🤖 **Automated Install** - One script sets up everything
+- Rose Pine Cyberpunk Theme - Purple/pink/cyan color scheme
+- Video Wallpapers - Live video backgrounds on login AND desktop
+- Hyprland - Dynamic tiling Wayland compositor
+- hyprlock - Beautiful lock screen with video support
+- Waybar - Custom status bar with cyberpunk styling
+- SDDM - Custom login theme with video wallpaper support
+- PipeWire - Modern audio stack
+- Mako - Notification daemon
+- Automated Install - One script sets up everything
 
 ## Installation
 
@@ -49,27 +49,27 @@ sudo reboot
 
 | Key | Action |
 |-----|--------|
-| `SUPER + Return` | Open terminal (Kitty) |
-| `SUPER + Q` | Close window |
-| `SUPER + M` | Exit Hyprland |
-| `SUPER + E` | Open file manager (Thunar) |
-| `SUPER + R` | Open launcher (Wofi) |
-| `SUPER + L` | Lock screen (hyprlock) |
-| `SUPER + SHIFT + L` | Lock with video wallpaper |
-| `SUPER + F10` | Start live wallpaper |
-| `SUPER + SHIFT + F10` | Stop live wallpaper |
-| `SUPER + H/J/K/L` | Move focus |
-| `SUPER + SHIFT + H/J/K/L` | Move window |
-| `SUPER + 1-9` | Switch workspace |
-| `SUPER + SHIFT + 1-9` | Move to workspace |
+| SUPER + Return | Open terminal (Kitty) |
+| SUPER + Q | Close window |
+| SUPER + M | Exit Hyprland |
+| SUPER + E | Open file manager (Thunar) |
+| SUPER + R | Open launcher (Wofi) |
+| SUPER + L | Lock screen (hyprlock) |
+| SUPER + SHIFT + L | Lock with video wallpaper |
+| SUPER + F10 | Start live wallpaper |
+| SUPER + SHIFT + F10 | Stop live wallpaper |
+| SUPER + H/J/K/L | Move focus |
+| SUPER + SHIFT + H/J/K/L | Move window |
+| SUPER + 1-9 | Switch workspace |
+| SUPER + SHIFT + 1-9 | Move to workspace |
 
 ## Video Wallpapers
 
 The installer automatically downloads wallpapers and sets up video backgrounds:
 
-- **Login Screen (SDDM)** - Video plays on login screen
-- **Desktop** - Same video plays as live wallpaper using mpvpaper
-- **Lock Screen** - Video plays behind lock screen
+- Login Screen (SDDM) - Video plays on login screen
+- Desktop - Same video plays as live wallpaper using mpvpaper
+- Lock Screen - Video plays behind lock screen
 
 ### Video Wallpaper Locations
 - Downloads: `~/.config/hypr/wallpapers/live-wallpapers/`
@@ -95,10 +95,10 @@ echo 'exec-once = mpvpaper --auto-set --loop --mute=yes "*" "/path/to/video.mp4"
 
 ### GPU Configuration
 The installer auto-detects your GPU:
-- **NVIDIA** - Installs proprietary drivers
-- **AMD** - Mesa + amdgpu
-- **Intel** - Mesa + intel
-- **VMware/VirtualBox** - Software rendering (no GPU required)
+- NVIDIA - Installs proprietary drivers
+- AMD - Mesa + amdgpu
+- Intel - Mesa + intel
+- VMware/VirtualBox - Software rendering (no GPU required)
 
 ### VM Support
 Running in a VM? The installer detects it and:
@@ -203,4 +203,4 @@ This project is open source. Feel free to use, modify, and share.
 
 ---
 
-<p align="center">Made with 💜 and caffeine</p>
+<p align="center">Made with love and caffeine</p>

@@ -910,7 +910,13 @@ EOF
                 if [ -f "$THEME_CONFIG" ]; then
                     sudo sed -i 's|Background=.*|Background="background.jpg"|g' "$THEME_CONFIG" 2>/dev/null || true
                     sudo sed -i 's|FormPosition=.*|FormPosition="left"|g' "$THEME_CONFIG" 2>/dev/null || true
-                    sudo sed -i 's|FillMode=.*|FillMode="PreserveAspectCrop"|g' "$THEME_CONFIG" 2>/dev/null || true
+                fi
+                
+                # Modify Background.qml to use Stretch instead of PreserveAspectCrop
+                BG_QML="/usr/share/sddm/themes/sddm-astronaut-theme/Background.qml"
+                if [ -f "$BG_QML" ]; then
+                    sudo sed -i 's/fillMode: Image.PreserveAspectCrop/fillMode: Image.Stretch/g' "$BG_QML" 2>/dev/null || true
+                    echo -e "  ${GREEN}[OK] Background.qml modified to Stretch${NC}"
                 fi
                 echo -e "  ${GREEN}[OK] SDDM static wallpaper set${NC}"
             fi

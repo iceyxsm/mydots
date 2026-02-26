@@ -1151,11 +1151,21 @@ if [ "$DISPLAY_MANAGER" = "custom" ]; then
     sudo systemctl disable sddm 2>/dev/null || true
     sudo systemctl mask sddm 2>/dev/null || true
     
-    if [ -f "./install-custom-dm.sh" ]; then
-        sudo ./install-custom-dm.sh
+    # Get the directory where this script is located
+    SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+    CUSTOM_DM_SCRIPT="$SCRIPT_DIR/install-custom-dm.sh"
+    
+    if [ -f "$CUSTOM_DM_SCRIPT" ]; then
+        sudo "$CUSTOM_DM_SCRIPT"
     else
-        echo -e "${YELLOW}[WARN] install-custom-dm.sh not found, skipping Custom DM installation${NC}"
-        echo -e "${YELLOW}      You can install it later with: sudo ./install-custom-dm.sh${NC}"
+        echo -e "${YELLOW}[WARN] install-custom-dm.sh not found at $CUSTOM_DM_SCRIPT${NC}"
+        echo -e "${YELLOW}      Searching in current directory...${NC}"
+        if [ -f "./install-custom-dm.sh" ]; then
+            sudo ./install-custom-dm.sh
+        else
+            echo -e "${RED}[ERROR] install-custom-dm.sh not found!${NC}"
+            echo -e "${YELLOW}      Download it from: https://github.com/iceyxsm/mydots${NC}"
+        fi
     fi
     echo ""
 fi

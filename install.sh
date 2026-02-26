@@ -845,12 +845,12 @@ if [ "$MODE" != "minimal" ]; then
             mkdir -p "$LIVE_DIR"
         fi
         
-        echo -e "${GREEN}[*] Checking for existing wallpapers...${NC}"
-        echo -e "  ${GREEN}Found $IMG_COUNT image files${NC}"
+        echo -e "${GREEN}[*] Checking for Google Drive wallpapers...${NC}"
+        echo -e "  ${GREEN}Found $IMG_COUNT images in live-wallpapers/${NC}"
         
         # Skip if we have images or marker file
         if [ "$IMG_COUNT" -ge 2 ] || [ -f "$MARKER_FILE" ]; then
-            echo -e "${GREEN}[*] Live wallpapers already exist ($IMG_COUNT images), skipping download${NC}"
+            echo -e "${GREEN}[*] Google Drive wallpapers already exist ($IMG_COUNT images), skipping download${NC}"
             touch "$MARKER_FILE"  # Ensure marker exists
         else
             echo -e "${GREEN}[*] Downloading live wallpapers from Google Drive...${NC}"
@@ -929,26 +929,33 @@ if [ "$MODE" != "minimal" ]; then
     echo -e "${GREEN}[*] Configuring wallpaper...${NC}"
     
     # Check for live wallpapers first
-    echo -e "  ${GREEN}Checking for live wallpapers...${NC}"
+    echo -e "  ${GREEN}Checking wallpaper folders...${NC}"
     LIVE_DIR="$HOME/.config/hypr/wallpapers/live-wallpapers"
     DARK_DIR="$HOME/.config/hypr/wallpapers/dark-theme"
+    LIGHT_DIR="$HOME/.config/hypr/wallpapers/light-theme"
     
-    echo -e "    ${GREEN}LIVE_DIR = $LIVE_DIR${NC}"
-    echo -e "    ${GREEN}DARK_DIR = $DARK_DIR${NC}"
+    # Check all wallpaper folders
+    TOTAL_WALLPAPERS=0
     
-    # Debug: show what's in the folders
     if [ -d "$LIVE_DIR" ]; then
         LIVE_COUNT=$(find "$LIVE_DIR" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.webp" -o -iname "*.gif" \) 2>/dev/null | wc -l)
-        echo -e "    ${GREEN}Found $LIVE_COUNT images in live-wallpapers/${NC}"
-        find "$LIVE_DIR" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.webp" -o -iname "*.gif" \) 2>/dev/null | head -5
-    else
-        echo -e "    ${GREEN}live-wallpapers directory does NOT exist${NC}"
+        echo -e "    ${GREEN}live-wallpapers: $LIVE_COUNT images${NC}"
+        TOTAL_WALLPAPERS=$((TOTAL_WALLPAPERS + LIVE_COUNT))
     fi
+    
     if [ -d "$DARK_DIR" ]; then
         DARK_COUNT=$(find "$DARK_DIR" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.webp" \) 2>/dev/null | wc -l)
-        echo -e "    ${GREEN}Found $DARK_COUNT images in dark-theme/${NC}"
-        find "$DARK_DIR" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.webp" \) 2>/dev/null | head -5
+        echo -e "    ${GREEN}dark-theme: $DARK_COUNT images${NC}"
+        TOTAL_WALLPAPERS=$((TOTAL_WALLPAPERS + DARK_COUNT))
     fi
+    
+    if [ -d "$LIGHT_DIR" ]; then
+        LIGHT_COUNT=$(find "$LIGHT_DIR" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.webp" \) 2>/dev/null | wc -l)
+        echo -e "    ${GREEN}light-theme: $LIGHT_COUNT images${NC}"
+        TOTAL_WALLPAPERS=$((TOTAL_WALLPAPERS + LIGHT_COUNT))
+    fi
+    
+    echo -e "  ${GREEN}Total wallpapers found: $TOTAL_WALLPAPERS${NC}"
     
     # Check for ANY image files in live wallpapers
     LIVE_IMG=$(find "$LIVE_DIR" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.webp" -o -iname "*.gif" \) 2>/dev/null | head -n1)

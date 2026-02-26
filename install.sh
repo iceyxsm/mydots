@@ -692,6 +692,18 @@ EOF
                     sudo sed -i 's|FullBlur=.*|FullBlur="false"|g' "$THEME_CONFIG" 2>/dev/null || true
                     sudo sed -i 's|BlurRadius=.*|BlurRadius="0"|g' "$THEME_CONFIG" 2>/dev/null || true
                 fi
+                
+                # Set same video as LIVE WALLPAPER for desktop using mpvpaper
+                if command -v mpvpaper &> /dev/null; then
+                    echo -e "  ${GREEN}[*] Setting LIVE VIDEO wallpaper for desktop...${NC}"
+                    # Add mpvpaper to hyprland.conf exec-once
+                    if ! grep -q "mpvpaper" ~/.config/hypr/hyprland.conf 2>/dev/null; then
+                        echo "" >> ~/.config/hypr/hyprland.conf
+                        echo "# Live video wallpaper (same as SDDM login)" >> ~/.config/hypr/hyprland.conf
+                        echo "exec-once = mpvpaper --auto-set --loop --vo=gpu --hwdec=auto --mute=yes --no-osc \"*\" \"$VIDEO_WALL\"" >> ~/.config/hypr/hyprland.conf
+                        echo -e "  ${GREEN}[OK] Live video wallpaper enabled: $(basename "$VIDEO_WALL")${NC}"
+                    fi
+                fi
             else
                 sudo cp "$DEFAULT_WALLPAPER" /usr/share/sddm/themes/sddm-astronaut-theme/background.jpg
                 sudo chmod 644 /usr/share/sddm/themes/sddm-astronaut-theme/background.jpg

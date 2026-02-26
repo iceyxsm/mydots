@@ -434,10 +434,14 @@ mkdir -p ~/.config/hypr
 sudo mkdir -p /etc/environment.d
 
 if lspci -nn | grep -i vmware &> /dev/null || lspci -nn | grep -i virtualbox &> /dev/null; then
-    VM_FIXES="# Virtual Machine fixes
+    VM_FIXES="# Virtual Machine fixes - FORCE SOFTWARE RENDERING
 WLR_RENDERER_ALLOW_SOFTWARE=1
 WLR_NO_HARDWARE_CURSORS=1
-WLR_BACKEND=wayland"
+WLR_BACKEND=wayland
+WLR_EGL_NO_MODIFIERS=1
+LIBGL_ALWAYS_SOFTWARE=1
+GALLIUM_DRIVER=softpipe"
+    echo -e "  ${GREEN}[OK] VMware/VirtualBox detected - software rendering enabled${NC}"
 else
     VM_FIXES="# NVIDIA fixes
 WLR_NO_HARDWARE_CURSORS=1
@@ -546,7 +550,67 @@ if [ "$MODE" != "minimal" ]; then
     echo -e "${GREEN}[*] Copying configuration files...${NC}"
     if [ -d ".config/hypr" ]; then
         if lspci -nn | grep -i 'vga\|3d\|display' | grep -iE 'vmware|virtualbox' &> /dev/null; then
-            cp .config/hypr/hyprland-vm.conf ~/.config/hypr/hyprland.conf 2>/dev/null || true
+            echo -e "  ${GREEN}[OK] VMware/VirtualBox detected - using software rendering${NC}"
+            # Create VM-optimized config with software rendering
+            cat > ~/.config/hypr/hyprland.conf << 'VMEOF'
+# VMware/VirtualBox config - Software rendering
+monitor=,preferred,auto,1
+
+# Force software rendering
+env = WLR_RENDERER_ALLOW_SOFTWARE,1
+env = WLR_NO_HARDWARE_CURSORS,1
+env = WLR_EGL_NO_MODIFIERS,1
+env = LIBGL_ALWAYS_SOFTWARE,1
+
+# Input
+input {
+    kb_layout = us
+    follow_mouse = 1
+    touchpad {
+        natural_scroll = no
+    }
+}
+
+general {
+    gaps_in = 5
+    gaps_out = 10
+    border_size = 2
+    col.active_border = rgba(c4a7e7ee)
+    col.inactive_border = rgba(1f1d2eee)
+    layout = dwindle
+}
+
+decoration {
+    rounding = 10
+    blur {
+        enabled = false
+    }
+    shadow {
+        enabled = false
+    }
+}
+
+animations {
+    enabled = false
+}
+
+layout {
+    dwindle {
+        pseudotile = yes
+        preserve_split = yes
+    }
+}
+
+# Window rules - disable blur for all windows
+windowrule = noblur, .*
+windowrule = noshadow, .*
+
+# Autostart
+exec-once = waybar
+exec-once = hyprpaper
+exec-once = mako
+VMEOF
+            echo -e "  ${GREEN}[OK] VM-optimized hyprland.conf installed${NC}"
         else
             cp .config/hypr/hyprland.conf ~/.config/hypr/ 2>/dev/null || true
         fi

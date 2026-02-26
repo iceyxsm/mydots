@@ -811,30 +811,33 @@ if [ "$MODE" != "minimal" ]; then
     
     # Debug: show what's in the folders
     if [ -d "$LIVE_DIR" ]; then
-        LIVE_COUNT=$(ls -1 "$LIVE_DIR" 2>/dev/null | wc -l)
-        echo -e "    ${GREEN}Found $LIVE_COUNT files in live-wallpapers/${NC}"
-        ls -1 "$LIVE_DIR" 2>/dev/null | head -5
+        LIVE_COUNT=$(find "$LIVE_DIR" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.webp" -o -iname "*.gif" \) 2>/dev/null | wc -l)
+        echo -e "    ${GREEN}Found $LIVE_COUNT images in live-wallpapers/${NC}"
+        find "$LIVE_DIR" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.webp" -o -iname "*.gif" \) 2>/dev/null | head -5
     else
         echo -e "    ${GREEN}live-wallpapers directory does NOT exist${NC}"
     fi
     if [ -d "$DARK_DIR" ]; then
-        DARK_COUNT=$(ls -1 "$DARK_DIR" 2>/dev/null | wc -l)
-        echo -e "    ${GREEN}Found $DARK_COUNT files in dark-theme/${NC}"
+        DARK_COUNT=$(find "$DARK_DIR" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.webp" \) 2>/dev/null | wc -l)
+        echo -e "    ${GREEN}Found $DARK_COUNT images in dark-theme/${NC}"
+        find "$DARK_DIR" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.webp" \) 2>/dev/null | head -5
     fi
     
-    if [ -d "$LIVE_DIR" ] && [ "$(ls -A "$LIVE_DIR" 2>/dev/null)" ]; then
-        LIVE_WALL=$(ls "$LIVE_DIR" | head -n1)
-        DEFAULT_WALLPAPER="$LIVE_DIR/$LIVE_WALL"
-        echo -e "  ${GREEN}[OK] Using LIVE wallpaper: $LIVE_WALL${NC}"
+    # Check for ANY image files in live wallpapers
+    LIVE_IMG=$(find "$LIVE_DIR" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.webp" -o -iname "*.gif" \) 2>/dev/null | head -n1)
+    if [ -n "$LIVE_IMG" ]; then
+        DEFAULT_WALLPAPER="$LIVE_IMG"
+        echo -e "  ${GREEN}[OK] Using LIVE wallpaper: $(basename $LIVE_IMG)${NC}"
     # Then check for dark theme wallpapers
-    elif [ -f "$DARK_DIR/dark-wall1.jpg" ]; then
-        DEFAULT_WALLPAPER="$DARK_DIR/dark-wall1.jpg"
-        echo -e "  ${GREEN}[OK] Using DARK THEME wallpaper: dark-wall1.jpg${NC}"
-    # Last resort - check if any dark theme wallpaper exists
-    elif [ -d "$DARK_DIR" ] && [ "$(ls -A "$DARK_DIR" 2>/dev/null)" ]; then
-        DARK_WALL=$(ls "$DARK_DIR" | head -n1)
-        DEFAULT_WALLPAPER="$DARK_DIR/$DARK_WALL"
-        echo -e "  ${GREEN}[OK] Using DARK THEME wallpaper: $DARK_WALL${NC}"
+    elif [ -d "$DARK_DIR" ]; then
+        DARK_IMG=$(find "$DARK_DIR" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.webp" \) 2>/dev/null | head -n1)
+        if [ -n "$DARK_IMG" ]; then
+            DEFAULT_WALLPAPER="$DARK_IMG"
+            echo -e "  ${GREEN}[OK] Using DARK THEME wallpaper: $(basename $DARK_IMG)${NC}"
+        else
+            echo -e "  ${GREEN}[WARN] No images found in dark-theme/${NC}"
+            DEFAULT_WALLPAPER=""
+        fi
     else
         echo -e "  ${GREEN}[WARN] No wallpapers found! Using solid color.${NC}"
         DEFAULT_WALLPAPER=""

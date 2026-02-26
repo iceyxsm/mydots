@@ -484,6 +484,13 @@ sudo systemctl enable sddm.service 2>/dev/null || echo -e "  ${GREEN}[WARN] SDDM
 # Clear SDDM cache to force theme refresh on next boot
 sudo rm -rf /var/lib/sddm/.cache/ 2>/dev/null || true
 
+# Install open-vm-tools for VMware resolution support
+if lspci | grep -i vmware &>/dev/null; then
+    echo -e "  ${GREEN}[*] VMware detected - installing open-vm-tools...${NC}"
+    install_pkg "open-vm-tools" 2>/dev/null || echo -e "  ${GREEN}[WARN] open-vm-tools install failed${NC}"
+    sudo systemctl enable vmtoolsd 2>/dev/null || true
+fi
+
 echo -e "  ${GREEN}[OK] SDDM enabled - will be active after reboot${NC}"
 
 # Verify hyprland.desktop exists
@@ -521,6 +528,10 @@ sudo tee /etc/sddm.conf.d/99-hyprland.conf > /dev/null << 'EOF'
 DisplayServer=x11
 GreeterEnvironment=QT_QPA_PLATFORM=xcb
 DefaultSession=hyprland.desktop
+
+[X11]
+# Allow SDDM to detect screen resolution automatically (important for VMs)
+ServerArguments=-nolisten tcp
 
 [Theme]
 Current=sddm-astronaut-theme

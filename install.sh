@@ -897,6 +897,8 @@ PartialBlur="false"
 FullBlur="false"
 ScreenWidth=""
 ScreenHeight=""
+BackgroundHorizontalAlignment="center"
+BackgroundVerticalAlignment="center"
 EOF
                 
                 # Also update the main theme config
@@ -927,6 +929,8 @@ PartialBlur="false"
 FullBlur="false"
 ScreenWidth=""
 ScreenHeight=""
+BackgroundHorizontalAlignment="center"
+BackgroundVerticalAlignment="center"
 EOF
                 
                 # Also update the main theme config

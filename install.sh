@@ -961,7 +961,7 @@ EOF
                 sudo chmod 644 /usr/share/sddm/themes/sddm-astronaut-theme/background.jpg 2>/dev/null
                 
                 # Create theme.conf.user - Stretch to fill screen!
-                # Use detected screen resolution
+                # Leave ScreenWidth/Height empty for auto-detection (prevents black bars)
                 sudo tee /usr/share/sddm/themes/sddm-astronaut-theme/theme.conf.user > /dev/null << EOF
 [General]
 Background="background.jpg"
@@ -969,16 +969,18 @@ FormPosition="left"
 HaveFormBackground="false"
 PartialBlur="false"
 FullBlur="false"
-ScreenWidth="$SCREEN_WIDTH"
-ScreenHeight="$SCREEN_HEIGHT"
+ScreenWidth=""
+ScreenHeight=""
+ScreenPadding="0"
 EOF
                 
-                # Also update the main theme config with detected resolution
+                # Also update the main theme config (leave ScreenWidth/Height for auto-detect)
                 if [ -f "$THEME_CONFIG" ]; then
                     sudo sed -i 's|Background=.*|Background="background.jpg"|g' "$THEME_CONFIG" 2>/dev/null || true
                     sudo sed -i 's|FormPosition=.*|FormPosition="left"|g' "$THEME_CONFIG" 2>/dev/null || true
-                    sudo sed -i "s|ScreenWidth=.*|ScreenWidth=\"$SCREEN_WIDTH\"|g" "$THEME_CONFIG" 2>/dev/null || true
-                    sudo sed -i "s|ScreenHeight=.*|ScreenHeight=\"$SCREEN_HEIGHT\"|g" "$THEME_CONFIG" 2>/dev/null || true
+                    sudo sed -i 's|ScreenWidth=.*|ScreenWidth=""|g' "$THEME_CONFIG" 2>/dev/null || true
+                    sudo sed -i 's|ScreenHeight=.*|ScreenHeight=""|g' "$THEME_CONFIG" 2>/dev/null || true
+                    sudo sed -i 's|ScreenPadding=.*|ScreenPadding="0"|g' "$THEME_CONFIG" 2>/dev/null || true
                 fi
                 
                 # Modify ALL QML files to use Stretch instead of PreserveAspectCrop

@@ -416,35 +416,49 @@ class LoginWindow(QMainWindow):
         """
         
     def load_wallpaper(self):
-        """Load wallpaper - searches downloaded Google Drive videos first"""
+        """Load wallpaper - picks the FIRST video found in wallpapers folder"""
         self.video_thread = None
         
-        # First, scan Google Drive downloaded wallpapers directory for videos
+        # Check Google Drive downloaded wallpapers directory FIRST
         gdrive_wallpaper_dir = os.path.expanduser("~/.config/hypr/wallpapers/live-wallpapers")
         if os.path.isdir(gdrive_wallpaper_dir):
-            # Look for video files in the downloaded folder
+            print(f"Scanning for videos in: {gdrive_wallpaper_dir}")
+            # Look for ANY video file - pick the first one found
             video_extensions = ('.mp4', '.webm', '.mkv', '.mov', '.avi')
             try:
-                for filename in os.listdir(gdrive_wallpaper_dir):
+                files = os.listdir(gdrive_wallpaper_dir)
+                # Sort to get consistent ordering
+                files.sort()
+                for filename in files:
                     if filename.lower().endswith(video_extensions):
                         video_path = os.path.join(gdrive_wallpaper_dir, filename)
-                        print(f"Found Google Drive video wallpaper: {filename}")
+                        print(f"Using FIRST video found: {filename}")
                         self.setup_mpv_video(video_path)
                         return
+                print("No videos found in wallpaper folder")
             except Exception as e:
                 print(f"Error scanning wallpaper dir: {e}")
+        else:
+            print(f"Wallpaper folder not found: {gdrive_wallpaper_dir}")
         
-        # Fallback to specific video paths
-        video_paths = [
-            os.path.expanduser("~/.config/hypr/wallpapers/live/login-video.mp4"),
-            os.path.expanduser("~/.config/hypr/wallpapers/live/login-video.webm"),
-            os.path.expanduser("~/.config/hypr/wallpapers/background.mp4"),
-            os.path.expanduser("~/.config/hypr/wallpapers/background.webm"),
-            "/usr/share/sddm/themes/sddm-astronaut-theme/background.mp4",
-            "/usr/share/sddm/themes/sddm-astronaut-theme/background.webm",
-            "/usr/share/backgrounds/login-video.mp4",
-            "/usr/share/backgrounds/login-video.webm",
+        # Fallback: check any video in hypr/wallpapers folder
+        fallback_dirs = [
+            os.path.expanduser("~/.config/hypr/wallpapers"),
         ]
+        for wallpaper_dir in fallback_dirs:
+            if os.path.isdir(wallpaper_dir):
+                video_extensions = ('.mp4', '.webm', '.mkv', '.mov', '.avi')
+                try:
+                    files = os.listdir(wallpaper_dir)
+                    files.sort()
+                    for filename in files:
+                        if filename.lower().endswith(video_extensions):
+                            video_path = os.path.join(wallpaper_dir, filename)
+                            print(f"Using FIRST video found: {filename}")
+                            self.setup_mpv_video(video_path)
+                            return
+                except Exception:
+                    pass
         
         # Static wallpaper paths (fallback) - also check Google Drive folder
         static_paths = []
@@ -472,13 +486,6 @@ class LoginWindow(QMainWindow):
             "/usr/share/backgrounds/default.jpg",
             "/usr/share/pixmaps/background.png",
         ])
-        
-        # Check for video first (using mpv)
-        for path in video_paths:
-            if os.path.exists(path):
-                print(f"Found video wallpaper: {path}")
-                self.setup_mpv_video(path)
-                return
         
         # Fall back to static image
         wallpaper = None

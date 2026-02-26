@@ -1003,12 +1003,20 @@ EOF
             # Check for video wallpapers in downloaded folder
             LIVE_DIR="$HOME/.config/hypr/wallpapers/live-wallpapers"
             VIDEO_WALL=""
+            echo -e "  ${GREEN}Checking for videos in: $LIVE_DIR${NC}"
             if [ -d "$LIVE_DIR" ]; then
+                # List all files for debugging
+                echo -e "  ${GREEN}Files in folder:${NC}"
+                ls -la "$LIVE_DIR" 2>/dev/null | head -10
                 # Get the FIRST video file found (alphabetically sorted)
-                VIDEO_WALL=$(find "$LIVE_DIR" -maxdepth 1 -type f \( -iname "*.mp4" -o -iname "*.webm" -o -iname "*.mkv" -o -iname "*.mov" \) 2>/dev/null | sort | head -n1)
+                VIDEO_WALL=$(find "$LIVE_DIR" -maxdepth 1 -type f \( -iname "*.mp4" -o -iname "*.webm" -o -iname "*.mkv" -o -iname "*.mov" -o -iname "*.avi" \) 2>/dev/null | sort | head -n1)
                 if [ -n "$VIDEO_WALL" ]; then
-                    echo -e "  ${GREEN}Found video: $(basename "$VIDEO_WALL")${NC}"
+                    echo -e "  ${GREEN}[OK] Found video: $(basename "$VIDEO_WALL")${NC}"
+                else
+                    echo -e "  ${YELLOW}[WARN] No video files found in $LIVE_DIR${NC}"
                 fi
+            else
+                echo -e "  ${YELLOW}[WARN] Folder $LIVE_DIR does not exist${NC}"
             fi
             
             # Find the active theme config file
@@ -1021,8 +1029,11 @@ EOF
             # VIDEO WALLPAPER CODE - First video found is used
             if [ -n "$VIDEO_WALL" ] && [ -f "$VIDEO_WALL" ]; then
                 echo -e "  ${GREEN}[OK] Using VIDEO wallpaper for SDDM${NC}"
+                echo -e "  ${GREEN}Copying: $VIDEO_WALL${NC}"
                 sudo cp "$VIDEO_WALL" /usr/share/sddm/themes/sddm-astronaut-theme/background.mp4
                 sudo chmod 644 /usr/share/sddm/themes/sddm-astronaut-theme/background.mp4
+                ls -la /usr/share/sddm/themes/sddm-astronaut-theme/background.mp4
+                echo -e "  ${GREEN}Creating theme.conf.user...${NC}"
                 sudo tee /usr/share/sddm/themes/sddm-astronaut-theme/theme.conf.user > /dev/null << 'EOF'
 [General]
 Background="background.mp4"
@@ -1034,6 +1045,7 @@ ScreenWidth=""
 ScreenHeight=""
 ScreenPadding="0"
 EOF
+                cat /usr/share/sddm/themes/sddm-astronaut-theme/theme.conf.user
                 echo -e "  ${GREEN}[OK] SDDM video wallpaper set: $(basename "$VIDEO_WALL")${NC}"
             elif [ -n "$DEFAULT_WALLPAPER" ] && [ -f "$DEFAULT_WALLPAPER" ]; then
                 # Fall back to static image if no video

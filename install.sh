@@ -893,6 +893,8 @@ Background="background.mp4"
 CropBackground="true"
 FormPosition="left"
 HaveFormBackground="false"
+PartialBlur="false"
+FullBlur="false"
 EOF
                 
                 # Also update the main theme config
@@ -901,6 +903,8 @@ EOF
                     sudo sed -i 's|FormPosition=.*|FormPosition="left"|g' "$THEME_CONFIG" 2>/dev/null || true
                     sudo sed -i 's|CropBackground=.*|CropBackground="true"|g' "$THEME_CONFIG" 2>/dev/null || true
                     sudo sed -i 's|HaveFormBackground=.*|HaveFormBackground="false"|g' "$THEME_CONFIG" 2>/dev/null || true
+                    sudo sed -i 's|PartialBlur=.*|PartialBlur="false"|g' "$THEME_CONFIG" 2>/dev/null || true
+                    sudo sed -i 's|FullBlur=.*|FullBlur="false"|g' "$THEME_CONFIG" 2>/dev/null || true
                 fi
                 echo -e "  ${GREEN}[OK] SDDM video wallpaper set!${NC}"
             else
@@ -915,6 +919,8 @@ Background="background.jpg"
 CropBackground="true"
 FormPosition="left"
 HaveFormBackground="false"
+PartialBlur="false"
+FullBlur="false"
 EOF
                 
                 # Also update the main theme config

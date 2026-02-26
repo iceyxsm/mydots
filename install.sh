@@ -54,9 +54,6 @@ for arg in "$@"; do
             echo "  -minstall     MINIMAL install - Maintains existing packages"
             echo "                Only installs missing packages, preserves configs"
             echo ""
-            echo "Display Manager:"
-            echo "  SDDM - Modern Qt-based DM with video support"
-            echo ""
             echo "Examples:"
             echo "  ./install.sh --finstall    # Nuclear option - start fresh"
             echo "  ./install.sh -finstall     # Standard install (default)"
@@ -78,32 +75,6 @@ if [ "$EUID" -eq 0 ]; then
     echo -e "${GREEN}[!] Please do not run this script as root${NC}"
     exit 1
 fi
-
-# Display Manager - Using SDDM only
-echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}    Display Manager: SDDM${NC}"
-echo -e "${GREEN}========================================${NC}"
-echo ""
-echo -e "${CYAN}SDDM Features:${NC}"
-echo "   - Modern Qt-based display manager"
-echo "   - Astronaut theme with video wallpaper support"
-echo "   - Full hardware and VM support"
-echo ""
-
-# Always use SDDM
-DISPLAY_MANAGER="sddm"
-
-# Disable Custom DM if it exists
-if systemctl is-enabled custom-dm 2>/dev/null | grep -q "enabled"; then
-    echo -e "${YELLOW}[*] Disabling Custom DM...${NC}"
-    systemctl stop custom-dm 2>/dev/null || true
-    systemctl disable custom-dm 2>/dev/null || true
-    systemctl mask custom-dm 2>/dev/null || true
-    rm -f /etc/systemd/system/display-manager.service
-fi
-
-echo -e "${GREEN}[*] Using SDDM as display manager${NC}"
-echo ""
 
 # FRESH INSTALL MODE - NUCLEAR OPTION
 if [ "$MODE" = "fresh" ]; then
@@ -271,12 +242,12 @@ BASE_PACKAGES=(
     "xdg-desktop-portal-hyprland"
     "qt5-wayland"
     "qt6-wayland"
-    "qt6-declarative"  # Required for SDDM QML themes
+    "qt6-declarative"
     "polkit-kde-agent"
     "sddm"
-    "mpv"  # For live wallpapers
-    "qt6-multimedia-ffmpeg"  # For SDDM video wallpapers
-    "jq"  # For scripts that parse hyprctl JSON output
+    "mpv"
+    "qt6-multimedia-ffmpeg"
+    "jq"
 )
 
 for pkg in "${BASE_PACKAGES[@]}"; do
@@ -290,42 +261,11 @@ HAS_NVIDIA=false
 HAS_INTEL=false
 HAS_AMD=false
 HAS_VMWARE=false
-HAS_VIRTUALBOX=false
-HAS_QEMU=false
-IS_VM=false
 
-# Check for VMware
+# Check for VMware/VirtualBox
 if lspci -nn | grep -i 'vga\|3d\|display' | grep -i vmware &> /dev/null; then
     HAS_VMWARE=true
-    IS_VM=true
     echo -e "  ${GREEN}[OK] VMware SVGA detected (Virtual Machine)${NC}"
-fi
-
-# Check for VirtualBox
-if lspci -nn | grep -i 'vga\|3d\|display' | grep -i virtualbox &> /dev/null || \
-   lspci -nn | grep -i 'vga\|3d\|display' | grep -i "innoTek" &> /dev/null; then
-    HAS_VIRTUALBOX=true
-    IS_VM=true
-    echo -e "  ${GREEN}[OK] VirtualBox detected (Virtual Machine)${NC}"
-fi
-
-# Check for QEMU/KVM
-if lspci -nn | grep -i 'vga\|3d\|display' | grep -i qemu &> /dev/null || \
-   [ -d /sys/class/dmi/id ] && grep -i qemu /sys/class/dmi/id/product_name &> /dev/null; then
-    HAS_QEMU=true
-    IS_VM=true
-    echo -e "  ${GREEN}[OK] QEMU/KVM detected (Virtual Machine)${NC}"
-fi
-
-# Generic VM detection
-if [ -z "$IS_VM" ] && [ -d /sys/class/dmi/id ]; then
-    if grep -iE 'vmware|virtualbox|qemu|kvm|xen' /sys/class/dmi/id/product_name /sys/class/dmi/id/sys_vendor /sys/class/dmi/id/board_vendor &> /dev/null; then
-        IS_VM=true
-        echo -e "  ${GREEN}[OK] Virtual Machine detected${NC}"
-    fi
-fi
-
-if [ "$IS_VM" = true ]; then
     echo -e "  ${GREEN}[WARN] Running in VM - software rendering will be used${NC}"
 fi
 
@@ -368,113 +308,6 @@ fi
 # Always install ICD loader
 install_pkg "vulkan-icd-loader"
 install_pkg "lib32-vulkan-icd-loader"
-
-# Check for NVIDIA GPU and auto-install appropriate driver
-if [ "$HAS_NVIDIA" = true ]; then
-    echo -e "${GREEN}[*] Installing NVIDIA drivers...${NC}"
-    
-    # Extract PCI ID
-    PCI_ID=$(lspci -nn | grep -i 'vga\|3d\|display' | grep -i nvidia | grep -oP '\[10de:\K[0-9a-f]+' | head -n1 | tr '[:lower:]' '[:upper:]')
-    
-    if [ -n "$PCI_ID" ]; then
-        echo -e "  ${GREEN}PCI ID: ${PCI_ID}${NC}"
-        
-        # Determine driver based on PCI ID
-        case "$PCI_ID" in
-            # Blackwell RTX 5000
-            2B85|2B87|2C05|2C07|2D05|2D07)
-                DRIVER="nvidia-open-dkms"
-                DESC="RTX 5000 series"
-                ;;
-            # Ada Lovelace RTX 4000
-            2684|2685|2686|2687|2688|2689|26B0|26B1|26B2|26B3|26B5|26B6|2704|2705|2730|2750|2780|2781|2782|2783|2786|2787|27A0|27B0|27B1|27B2|27B3|27B6|27B7|27B8|27B9|27BA|27BB|27E0)
-                DRIVER="nvidia-open-dkms"
-                DESC="RTX 4000 series"
-                ;;
-            # Ampere RTX 3000
-            2204|2206|2207|2208|220A|2216|222F|2230|2231|2232|2233|2235|2236|2237|2414|2420|2438|2482|2484|2486|2487|2488|2489|24B0|24B1|24B6|24B7|24B8|24B9|24BA|24C9|24DC|24DD|24E0|24FA|2503|2504|2507|2508|2520|2523|2531|2544|2560|2571|2582|2583|2584|25B0|25B2|25B6|25B8|25E0|25E2|25E5|25F0|25F8|25F9|25FA)
-                DRIVER="nvidia-dkms"
-                DESC="RTX 3000 series"
-                ;;
-            # Turing RTX 2000/GTX 1600
-            1E02|1E04|1E07|1E09|1E30|1E36|1E78|1E81|1E82|1E84|1E87|1E90|1EB0|1EB1|1EB5|1EB6|1EC2|1EC7|1ED0|1ED1|1ED3|1EDF|1F02|1F03|1F06|1F07|1F08|1F10|1F11|1F12|1F14|1F15|1F36|1F42|1F47|1F54|1F76|1F82|1F83|1F91|1F95|1F96|1F97|1F98|1F99|1F9C|1F9D|1FA0|1FB0|1FB1|1FB2|1FB6|1FB7|1FB8|1FB9|1FBC|1FDD|1FF0|1FF2|1FF9|2182|2184|2187|2188|2189|21C4|21D1)
-                DRIVER="nvidia-dkms"
-                DESC="RTX 2000/GTX 1600 series"
-                ;;
-            # Pascal GTX 1000
-            1582|15F0|15F7|15F8|15F9|1617|1618|1619|161A|179C|17C2|17C8|1B00|1B02|1B06|1B30|1B34|1B38|1B80|1B81|1B82|1B83|1B84|1B87|1BA0|1BA1|1BA2|1BB0|1BB1|1BB3|1BB4|1BB5|1BB6|1BB7|1BB8|1BB9|1BC7|1BE0|1BE1|1C02|1C03|1C07|1C09|1C20|1C21|1C22|1C30|1C31|1C60|1C61|1C62|1C81|1C82|1C83|1C8C|1C8D|1C8F|1CB1|1CB2|1CB3|1CB6|1D01|1D02|1D10|1D11|1D12|1D13|1D16|1D33|1D34|1D35|1D36|1D52|1D71|1D81|1DB1|1DB3|1DB4|1DB5|1DB6|1DB7|1DB8)
-                DRIVER="nvidia-dkms"
-                DESC="GTX 1000 series"
-                ;;
-            # Maxwell GTX 900/750
-            13C0|13C1|13C2|13C3|13D7|13D8|13D9|13DA|13F0|13F1|13F2|13F3|13F8|13F9|13FA|13FB|1401|1402|1406|1407|1427|1430|1431|1436|1613)
-                DRIVER="nvidia-dkms"
-                DESC="GTX 900 series"
-                ;;
-            # Kepler - LEGACY (AUR)
-            0FC0|0FC1|0FC2|0FC6|0FC8|0FC9|0FCD|0FCE|0FD1|0FD2|0FD3|0FD4|0FD5|0FD8|0FD9|0FDF|0FE0|0FE1|0FE2|0FE3|0FE4|1001|1004|1005|1007|1008|100A|100C|1021|1022|1023|1024|1026|1027|1028|1029|103A|103C|1180|1183|1184|1185|1187|1188|1189|118A|118E|118F|1193|1194|1195|1198|1199|119A|119D|119E|119F|11A0|11A1|11A2|11A3|11A7|11B4|11B6|11B7|11B8|11BA|11BC|11BD|11BE|11BF|11C0|11C2|11C3|11C4|11C5|11C6|11C8|11CB|11E0|11E1|11E2|11E3|11E7|11FA|11FC|1280|1281|1282|1284|1286|1287|1288|1289|128B|1290|1291|1292|1293|1295|1296|1298|1299|12B9|12BA)
-                DRIVER="nvidia-470xx-dkms"
-                DESC="GTX 600/700 series (LEGACY)"
-                AUR=1
-                ;;
-            # Fermi - VERY LEGACY (AUR)
-            06C0|06C4|06CA|06CD|06D1|06D2|06D8|06D9|06DA|06DC|06DD|06DE|06DF|0DC0|0DC4|0DC5|0DC6|0DCD|0DCE|0DD1|0DD2|0DD6|0DE0|0DE1|0DE2|0DE3|0DE4|0DE5|0DE7|0DE8|0DE9|0DEA|0DEB|0DEC|0DED|0DEE|0DEF|0DF0|0DF1|0DF2|0DF3|0DF4|0DF5|0DF6|0DF7|0DF8|0DF9|0DFA|0DFC|0E22|0E23|0E24|0E30|0E31|0E3A|0E3B|0F00|0F01|0F02|0F03|0E3C|0E3D|0E3E|0FCD)
-                DRIVER="nvidia-390xx-dkms"
-                DESC="GTX 400/500 series (LEGACY)"
-                AUR=1
-                ;;
-            # Unknown - default to nvidia-dkms
-            *)
-                DRIVER="nvidia-dkms"
-                DESC="Unknown NVIDIA GPU"
-                ;;
-        esac
-        
-        echo -e "  ${GREEN}[OK] Detected: ${DESC}${NC}"
-        echo -e "  ${GREEN}[*] Installing ${DRIVER}...${NC}"
-        
-        # Check if already installed (minimal mode)
-        if [ "$MODE" = "minimal" ] && pacman -Qi "$DRIVER" &> /dev/null; then
-            echo -e "  ${GREEN}[OK] ${DRIVER} already installed (minimal mode)${NC}"
-        else
-            # Blacklist nouveau
-            if lsmod | grep -q nouveau 2>/dev/null; then
-                echo -e "  ${GREEN}[*] Blacklisting nouveau...${NC}"
-                echo "blacklist nouveau" | sudo tee /etc/modprobe.d/blacklist-nouveau.conf > /dev/null
-                echo "options nouveau modeset=0" | sudo tee -a /etc/modprobe.d/blacklist-nouveau.conf > /dev/null
-            fi
-            
-            # Install driver
-            if [ "$AUR" = "1" ]; then
-                echo -e "  ${GREEN}[WARN] Legacy GPU - requires AUR package${NC}"
-                if command -v yay &> /dev/null; then
-                    yay -S --noconfirm "$DRIVER" 2>/dev/null || echo -e "  ${GREEN}[WARN] Failed to install $DRIVER${NC}"
-                else
-                    echo -e "  ${GREEN}[WARN] yay not available, skipping NVIDIA driver${NC}"
-                fi
-            else
-                sudo pacman -S --needed --noconfirm "$DRIVER" nvidia-utils lib32-nvidia-utils 2>/dev/null || echo -e "  ${GREEN}[WARN] Failed to install NVIDIA driver${NC}"
-            fi
-            
-            # Configure if installed
-            if pacman -Qi "$DRIVER" &> /dev/null 2>&1 || [ "$DRIVER" = "nvidia-dkms" -a -d "/usr/lib/nvidia" ]; then
-                echo -e "  ${GREEN}[*] Configuring NVIDIA...${NC}"
-                # Early module loading
-                if ! grep -q "nvidia" /etc/mkinitcpio.conf 2>/dev/null; then
-                    sudo sed -i 's/MODULES=()/MODULES=(nvidia nvidia_modeset nvidia_uvm nvidia_drm)/' /etc/mkinitcpio.conf
-                fi
-                # DRM KMS
-                if [ ! -f "/etc/modprobe.d/nvidia.conf" ]; then
-                    echo "options nvidia_drm modeset=1" | sudo tee /etc/modprobe.d/nvidia.conf > /dev/null
-                fi
-                sudo mkinitcpio -P 2>/dev/null || true
-                echo -e "  ${GREEN}[OK] NVIDIA driver installed and configured${NC}"
-            fi
-        fi
-    else
-        echo -e "  ${GREEN}[WARN] Could not detect PCI ID, skipping NVIDIA driver${NC}"
-    fi
-fi
 
 # Install PipeWire audio stack
 echo -e "${GREEN}[*] Installing PipeWire audio stack...${NC}"
@@ -537,41 +370,10 @@ echo -e "${GREEN}[*] Enabling system services...${NC}"
 sudo systemctl enable --now bluetooth.service 2>/dev/null || echo -e "  ${GREEN}[WARN] Bluetooth service failed${NC}"
 sudo systemctl enable --now NetworkManager.service 2>/dev/null || echo -e "  ${GREEN}[WARN] NetworkManager failed${NC}"
 
-# Display Manager Setup
-if [ "$DISPLAY_MANAGER" = "sddm" ]; then
-    # Enable SDDM display manager (NEVER restart during script - causes logout!)
-    echo -e "${GREEN}[*] Enabling SDDM display manager...${NC}"
-    sudo systemctl enable sddm.service 2>/dev/null || echo -e "  ${GREEN}[WARN] SDDM enable failed${NC}"
-    
-    # Clear SDDM cache to force theme refresh on next boot
-    sudo rm -rf /var/lib/sddm/.cache/ 2>/dev/null || true
-else
-    echo -e "${GREEN}[*] Custom DM selected - disabling SDDM...${NC}"
-    sudo systemctl stop sddm 2>/dev/null || true
-    sudo systemctl disable sddm 2>/dev/null || true
-    sudo systemctl mask sddm 2>/dev/null || true
-    echo -e "  ${GREEN}[OK] SDDM disabled${NC}"
-fi
-
-# Auto-install VM guest tools based on detected hypervisor
-if [ "$IS_VM" = true ]; then
-    echo -e "  ${GREEN}[*] Virtual Machine detected - installing guest tools...${NC}"
-    
-    if [ "$HAS_VMWARE" = true ]; then
-        echo -e "    ${GREEN}Installing VMware Tools...${NC}"
-        install_pkg "open-vm-tools" 2>/dev/null && echo -e "    ${GREEN}[OK] open-vm-tools installed${NC}" || echo -e "    ${GREEN}[WARN] Failed to install open-vm-tools${NC}"
-        sudo systemctl enable vmtoolsd 2>/dev/null || true
-    elif [ "$HAS_VIRTUALBOX" = true ]; then
-        echo -e "    ${GREEN}Installing VirtualBox Guest Utils...${NC}"
-        install_pkg "virtualbox-guest-utils" 2>/dev/null && echo -e "    ${GREEN}[OK] virtualbox-guest-utils installed${NC}" || echo -e "    ${GREEN}[WARN] Failed to install virtualbox-guest-utils${NC}"
-        sudo systemctl enable vboxservice 2>/dev/null || true
-    elif [ "$HAS_QEMU" = true ]; then
-        echo -e "    ${GREEN}Installing QEMU Guest Agent...${NC}"
-        install_pkg "qemu-guest-agent" 2>/dev/null && echo -e "    ${GREEN}[OK] qemu-guest-agent installed${NC}" || echo -e "    ${GREEN}[WARN] Failed to install qemu-guest-agent${NC}"
-        sudo systemctl enable qemu-guest-agent 2>/dev/null || true
-    fi
-fi
-
+# Enable SDDM display manager
+echo -e "${GREEN}[*] Enabling SDDM display manager...${NC}"
+sudo systemctl enable sddm.service 2>/dev/null || echo -e "  ${GREEN}[WARN] SDDM enable failed${NC}"
+sudo rm -rf /var/lib/sddm/.cache/ 2>/dev/null || true
 echo -e "  ${GREEN}[OK] SDDM enabled - will be active after reboot${NC}"
 
 # Verify hyprland.desktop exists
@@ -592,57 +394,28 @@ EOF
     echo -e "  ${GREEN}[OK] hyprland.desktop created${NC}"
 fi
 
-# Create SDDM session fix - THIS IS CRITICAL FOR LOGIN LOOP (only for SDDM)
-if [ "$DISPLAY_MANAGER" = "sddm" ]; then
-    echo -e "${GREEN}[*] Creating SDDM session fix...${NC}"
-    sudo mkdir -p /etc/sddm.conf.d
-    
-    # Remove old conflicting configs
-    sudo rm -f /etc/sddm.conf.d/hyprland.conf 2>/dev/null || true
-    sudo rm -f /etc/sddm.conf.d/10-wayland.conf 2>/dev/null || true
-    
-    # DON'T delete theme while SDDM is running - causes crash/restart!
-    # Theme will be updated by yay --rebuildtree flag
-    
-    # Get actual screen resolution
-    SCREEN_RES=$(xrandr 2>/dev/null | grep '*' | awk '{print $1}' | head -n1)
-    if [ -z "$SCREEN_RES" ]; then
-        SCREEN_RES=$(xdpyinfo 2>/dev/null | grep dimensions | awk '{print $2}' | head -n1)
-    fi
-    if [ -n "$SCREEN_RES" ]; then
-        SCREEN_WIDTH=$(echo $SCREEN_RES | cut -d'x' -f1)
-        SCREEN_HEIGHT=$(echo $SCREEN_RES | cut -d'x' -f2)
-        echo -e "  ${GREEN}[OK] Detected screen resolution: ${SCREEN_WIDTH}x${SCREEN_HEIGHT}${NC}"
-    else
-        SCREEN_WIDTH="1920"
-        SCREEN_HEIGHT="1080"
-        echo -e "  ${YELLOW}[WARN] Could not detect resolution, using ${SCREEN_WIDTH}x${SCREEN_HEIGHT}${NC}"
-    fi
-    
-    # Create proper SDDM config in conf.d with detected resolution
-    sudo tee /etc/sddm.conf.d/99-hyprland.conf > /dev/null << EOF
+# Create SDDM config
+echo -e "${GREEN}[*] Creating SDDM session fix...${NC}"
+sudo mkdir -p /etc/sddm.conf.d
+sudo rm -f /etc/sddm.conf.d/hyprland.conf 2>/dev/null || true
+sudo rm -f /etc/sddm.conf.d/10-wayland.conf 2>/dev/null || true
+
+sudo tee /etc/sddm.conf.d/99-hyprland.conf > /dev/null << 'EOF'
 [General]
 DisplayServer=x11
 GreeterEnvironment=QT_QPA_PLATFORM=xcb
 DefaultSession=hyprland.desktop
 
-[X11]
-# Force SDDM to use detected screen resolution
-ServerArguments=-nolisten tcp -dpi 96
-
 [Theme]
 Current=sddm-astronaut-theme
 EOF
-    
-    # ALSO create/update /etc/sddm.conf directly (some systems need this)
-    SDDM_CONF="/etc/sddm.conf"
-    if [ -f "$SDDM_CONF" ]; then
-        echo -e "  ${GREEN}[*] Backing up existing /etc/sddm.conf...${NC}"
-        sudo cp "$SDDM_CONF" "$SDDM_CONF.bak.$(date +%Y%m%d%H%M%S)" 2>/dev/null || true
-    fi
-    
-    # Create /etc/sddm.conf with theme settings
-    sudo tee "$SDDM_CONF" > /dev/null << 'EOF'
+
+SDDM_CONF="/etc/sddm.conf"
+if [ -f "$SDDM_CONF" ]; then
+    sudo cp "$SDDM_CONF" "$SDDM_CONF.bak.$(date +%Y%m%d%H%M%S)" 2>/dev/null || true
+fi
+
+sudo tee "$SDDM_CONF" > /dev/null << 'EOF'
 [General]
 DisplayServer=x11
 GreeterEnvironment=QT_QPA_PLATFORM=xcb
@@ -652,192 +425,103 @@ InputMethod=qtvirtualkeyboard
 [Theme]
 Current=sddm-astronaut-theme
 EOF
-    
-    echo -e "  ${GREEN}[OK] SDDM config created (using X11 backend for stability)${NC}"
-fi
 
-# Create Hyprland environment file with GPU fixes
+echo -e "  ${GREEN}[OK] SDDM config created${NC}"
+
+# Create Hyprland environment file
 echo -e "${GREEN}[*] Creating Hyprland environment config...${NC}"
 mkdir -p ~/.config/hypr
 sudo mkdir -p /etc/environment.d
 
-# Detect if running in VM for special config
 if lspci -nn | grep -i vmware &> /dev/null || lspci -nn | grep -i virtualbox &> /dev/null; then
-    VM_FIXES="# Virtual Machine fixes (VMware/VirtualBox)
+    VM_FIXES="# Virtual Machine fixes
 WLR_RENDERER_ALLOW_SOFTWARE=1
 WLR_NO_HARDWARE_CURSORS=1
 WLR_BACKEND=wayland"
-    echo -e "  ${GREEN}[OK] Applied VM-specific fixes${NC}"
 else
-    VM_FIXES="# NVIDIA fixes (if applicable)
+    VM_FIXES="# NVIDIA fixes
 WLR_NO_HARDWARE_CURSORS=1
-WLR_RENDERER_ALLOW_SOFTWARE=1
-WLR_DRM_NO_ATOMIC=1
-WLR_DRM_NO_MODIFIERS=1"
+WLR_RENDERER_ALLOW_SOFTWARE=1"
 fi
 
-# For user
 cat > ~/.config/hypr/environment.conf << EOF
-# GPU/Display fixes
 $VM_FIXES
-
-# Session type
 XDG_SESSION_TYPE=wayland
 XDG_CURRENT_DESKTOP=Hyprland
-
-# QT/Wayland
 QT_QPA_PLATFORM=wayland
 QT_QPA_PLATFORMTHEME=qt5ct
-
-# SDL
 SDL_VIDEODRIVER=wayland
-
-# Mozilla
 MOZ_ENABLE_WAYLAND=1
-
-# For NVIDIA cards
-if [ -d /proc/driver/nvidia ]; then
-    export __GLX_VENDOR_LIBRARY_NAME=nvidia
-    export GBM_BACKEND=nvidia-drm
-    export __GL_GSYNC_ALLOWED=0
-    export __GL_VRR_ALLOWED=0
-fi
 EOF
 
-# For system
 sudo tee /etc/environment.d/99-hyprland.conf > /dev/null << 'EOF'
 WLR_NO_HARDWARE_CURSORS=1
 WLR_RENDERER_ALLOW_SOFTWARE=1
-WLR_DRM_NO_ATOMIC=1
-WLR_DRM_NO_MODIFIERS=1
 XDG_SESSION_TYPE=wayland
 QT_QPA_PLATFORM=wayland
 EOF
 
 echo -e "  ${GREEN}[OK] Environment config created${NC}"
 
-# Configure NetworkManager WiFi backend
+# Configure NetworkManager
 echo -e "${GREEN}[*] Configuring NetworkManager WiFi backend...${NC}"
 sudo mkdir -p /etc/NetworkManager/NetworkManager.conf.d
-echo -e "[device]
-wifi.backend=iwd" | sudo tee /etc/NetworkManager/NetworkManager.conf.d/wifi-backend.conf > /dev/null
-echo -e "  ${GREEN}[OK] Using iwd for WiFi (faster connection)${NC}"
+echo -e "[device]\nwifi.backend=iwd" | sudo tee /etc/NetworkManager/NetworkManager.conf.d/wifi-backend.conf > /dev/null
+echo -e "  ${GREEN}[OK] Using iwd for WiFi${NC}"
 
-# Install neofetch (now AUR only) - do this early so it works in all modes
+# Install neofetch from AUR
 echo -e "${GREEN}[*] Installing neofetch (AUR)...${NC}"
 if ! command -v neofetch &> /dev/null; then
     if ! command -v yay &> /dev/null; then
-        echo -e "  ${GREEN}Installing yay first...${NC}"
         YAY_TEMP="$(mktemp -d)"
         git clone https://aur.archlinux.org/yay.git "$YAY_TEMP" 2>/dev/null && \
-            (cd "$YAY_TEMP" && makepkg -si --noconfirm 2>/dev/null) || \
-            echo -e "  ${GREEN}[WARN] Failed to install yay, skipping neofetch${NC}"
+            (cd "$YAY_TEMP" && makepkg -si --noconfirm 2>/dev/null)
         rm -rf "$YAY_TEMP"
     fi
     if command -v yay &> /dev/null; then
-        yay -S --noconfirm neofetch 2>/dev/null && \
-            echo -e "  ${GREEN}[OK] neofetch installed${NC}" || \
-            echo -e "  ${GREEN}[WARN] Failed to install neofetch${NC}"
+        yay -S --noconfirm neofetch 2>/dev/null
     fi
-else
-    echo -e "  ${GREEN}[OK] neofetch already installed${NC}"
 fi
 
-# Install yay AUR helper (if not in minimal mode or yay missing)
+# Install yay and AUR packages
 if [ "$MODE" != "minimal" ] || ! command -v yay &> /dev/null; then
     echo -e "${GREEN}[*] Installing yay AUR helper...${NC}"
     if ! command -v yay &> /dev/null; then
         YAY_BUILD_DIR="$(mktemp -d)"
-        git clone https://aur.archlinux.org/yay.git "$YAY_BUILD_DIR" || {
-            echo -e "${GREEN}[WARN] Failed to clone yay, continuing without AUR packages...${NC}"
-            YAY_FAILED=1
-        }
+        git clone https://aur.archlinux.org/yay.git "$YAY_BUILD_DIR" || YAY_FAILED=1
         if [ -z "$YAY_FAILED" ]; then
-            (cd "$YAY_BUILD_DIR" && makepkg -si --noconfirm) || {
-                echo -e "${GREEN}[WARN] Failed to build yay, continuing without AUR packages...${NC}"
-                YAY_FAILED=1
-            }
+            (cd "$YAY_BUILD_DIR" && makepkg -si --noconfirm) || YAY_FAILED=1
         fi
         rm -rf "$YAY_BUILD_DIR"
-    else
-        echo -e "  ${GREEN}[OK] yay already installed${NC}"
     fi
     
-    # Install AUR packages if yay available
     if [ -z "$YAY_FAILED" ] && command -v yay &> /dev/null; then
-        echo -e "  ${GREEN}Installing nerd-fonts-jetbrains-mono from AUR...${NC}"
-        yay -S --noconfirm nerd-fonts-jetbrains-mono 2>/dev/null || echo -e "  ${GREEN}[WARN] Failed to install JetBrains Nerd Font${NC}"
-        
-        echo -e "  ${GREEN}Installing cliphist from AUR...${NC}"
-        yay -S --noconfirm cliphist 2>/dev/null || echo -e "  ${GREEN}[WARN] Failed to install cliphist${NC}"
-        
-        # Only install SDDM theme if SDDM is the selected display manager
-        if [ "$DISPLAY_MANAGER" = "sddm" ]; then
-            echo -e "${GREEN}[*] Installing SDDM Astronaut theme (AUR)...${NC}"
-            # Force reinstall to ensure fresh theme
-            yay -S --noconfirm --rebuildtree sddm-astronaut-theme 2>/dev/null || echo -e "  ${GREEN}[WARN] sddm-astronaut-theme install failed${NC}"
-        fi
-        
-        echo -e "${GREEN}[*] Installing mpvpaper for live wallpapers (AUR)...${NC}"
-        # Compiler warnings are normal and can be ignored
-        yay -S --noconfirm mpvpaper 2>/dev/null || echo -e "  ${GREEN}[WARN] mpvpaper install failed - live wallpapers won't work${NC}"
-        echo -e "  ${GREEN}[OK] mpvpaper installed (compiler warnings are normal)${NC}"
+        yay -S --noconfirm nerd-fonts-jetbrains-mono 2>/dev/null || true
+        yay -S --noconfirm cliphist 2>/dev/null || true
+        yay -S --noconfirm --rebuildtree sddm-astronaut-theme 2>/dev/null || true
+        yay -S --noconfirm mpvpaper 2>/dev/null || true
     fi
 fi
 
 # Enable PipeWire services
-echo -e "${GREEN}[*] Enabling PipeWire audio services...${NC}"
 systemctl --user enable pipewire.service 2>/dev/null || true
 systemctl --user enable pipewire-pulse.service 2>/dev/null || true
 systemctl --user enable wireplumber.service 2>/dev/null || true
-echo -e "  ${GREEN}[OK] PipeWire services enabled for user${NC}"
 
-# Configure SDDM theme (only if SDDM is selected and astronaut theme was installed)
-if [ "$DISPLAY_MANAGER" = "sddm" ]; then
-    if [ -d "/usr/share/sddm/themes/sddm-astronaut-theme" ]; then
-        echo -e "${GREEN}[*] SDDM Astronaut theme installed${NC}"
-        # Verify theme config
-        if [ -f "/etc/sddm.conf.d/99-hyprland.conf" ]; then
-            echo -e "  ${GREEN}[OK] SDDM config verified${NC}"
-            cat /etc/sddm.conf.d/99-hyprland.conf | grep "Current=" | sed 's/^/    /'
-        fi
-    else
-        echo -e "  ${GREEN}[WARN] Astronaut theme not found, using default SDDM theme${NC}"
-    fi
+# Install gdown
+echo -e "${GREEN}[*] Installing gdown for wallpaper downloads...${NC}"
+if ! command -v gdown &> /dev/null; then
+    install_pkg "python-pipx"
+    pipx install gdown 2>/dev/null || pip install --user gdown 2>/dev/null || true
+    export PATH="$HOME/.local/bin:$PATH"
 fi
 
-# Install gdown for wallpaper downloads
+# Download wallpapers
 if [ "$MODE" != "minimal" ]; then
-    echo -e "${GREEN}[*] Installing gdown for wallpaper downloads...${NC}"
-    
-    # Fix missing dependencies first (required for beautifulsoup4)
-    echo -e "  ${GREEN}Installing Python dependencies...${NC}"
-    pip install --user --break-system-packages typing_extensions 2>/dev/null || \
-        pip install --user typing_extensions 2>/dev/null || \
-        pip install typing_extensions 2>/dev/null || true
-    
-    # Also try with pacman
-    sudo pacman -S --needed --noconfirm python-typing_extensions 2>/dev/null || true
-    
-    if ! command -v gdown &> /dev/null; then
-        # Install pipx first (recommended way on Arch)
-        install_pkg "python-pipx"
-        # Use pipx to install gdown in isolated environment
-        pipx install gdown 2>/dev/null || \
-            pip install --user --break-system-packages gdown 2>/dev/null || \
-            pip install --user gdown 2>/dev/null || \
-            echo -e "  ${GREEN}[WARN] Failed to install gdown${NC}"
-        export PATH="$HOME/.local/bin:$PATH"
-    else
-        echo -e "  ${GREEN}[OK] gdown already installed${NC}"
-    fi
-    
-    # Download wallpapers from Google Drive (only if not already present)
     if command -v gdown &> /dev/null; then
         LIVE_DIR="$HOME/.config/hypr/wallpapers/live-wallpapers"
         MARKER_FILE="$LIVE_DIR/.downloaded"
         
-        # Check for image files specifically
         if [ -d "$LIVE_DIR" ]; then
             IMG_COUNT=$(find "$LIVE_DIR" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.gif" -o -iname "*.webp" \) 2>/dev/null | wc -l)
         else
@@ -845,307 +529,130 @@ if [ "$MODE" != "minimal" ]; then
             mkdir -p "$LIVE_DIR"
         fi
         
-        echo -e "${GREEN}[*] Checking for Google Drive wallpapers...${NC}"
-        echo -e "  ${GREEN}Found $IMG_COUNT images in live-wallpapers/${NC}"
-        
-        # Skip if we have images or marker file
         if [ "$IMG_COUNT" -ge 2 ] || [ -f "$MARKER_FILE" ]; then
-            echo -e "${GREEN}[*] Google Drive wallpapers already exist ($IMG_COUNT images), skipping download${NC}"
-            touch "$MARKER_FILE"  # Ensure marker exists
+            echo -e "${GREEN}[*] Wallpapers already exist ($IMG_COUNT images), skipping download${NC}"
+            touch "$MARKER_FILE"
         else
-            echo -e "${GREEN}[*] Downloading live wallpapers from Google Drive...${NC}"
-            echo -e "  ${GREEN}This may take a few minutes...${NC}"
+            echo -e "${GREEN}[*] Downloading wallpapers from Google Drive...${NC}"
             GDRIVE_FOLDER="https://drive.google.com/drive/folders/1oS6aUxoW6DGoqzu_S3pVBlgicGPgIoYq"
-            
             gdown --folder "$GDRIVE_FOLDER" -O "$LIVE_DIR" --remaining-ok --no-cookies 2>&1
-            
-            # Count downloaded images
-            NEW_COUNT=$(find "$LIVE_DIR" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.gif" -o -iname "*.webp" \) 2>/dev/null | wc -l)
-            echo -e "  ${GREEN}Downloaded $NEW_COUNT image files${NC}"
-            
-            if [ "$NEW_COUNT" -gt 0 ]; then
-                echo -e "  ${GREEN}[OK] Downloaded $NEW_COUNT wallpapers!${NC}"
-                touch "$MARKER_FILE"
-            else
-                echo -e "  ${GREEN}[WARN] Download failed. Manual: $GDRIVE_FOLDER${NC}"
-            fi
+            touch "$MARKER_FILE"
         fi
     fi
 fi
 
-# Copy configs (skip for minimal mode if configs exist)
+# Copy configs
 if [ "$MODE" != "minimal" ]; then
     echo -e "${GREEN}[*] Copying configuration files...${NC}"
     if [ -d ".config/hypr" ]; then
-        # Check if running in VM
         if lspci -nn | grep -i 'vga\|3d\|display' | grep -iE 'vmware|virtualbox' &> /dev/null; then
-            echo -e "  ${GREEN}[OK] Virtual Machine detected - using VM config${NC}"
-            # Copy VM-specific config as main config
-            if [ -f ".config/hypr/hyprland-vm.conf" ]; then
-                cp .config/hypr/hyprland-vm.conf ~/.config/hypr/hyprland.conf
-                echo -e "  ${GREEN}[OK] VM-optimized hyprland.conf installed${NC}"
-            fi
+            cp .config/hypr/hyprland-vm.conf ~/.config/hypr/hyprland.conf 2>/dev/null || true
         else
-            echo -e "  ${GREEN}[OK] Real hardware detected - using full config${NC}"
-            # Copy normal config
-            cp .config/hypr/hyprland.conf ~/.config/hypr/hyprland.conf 2>/dev/null || true
+            cp .config/hypr/hyprland.conf ~/.config/hypr/ 2>/dev/null || true
         fi
-        # Copy other config files
-        cp .config/hypr/environment.conf ~/.config/hypr/ 2>/dev/null || true
-        cp .config/hypr/hyprlock.conf ~/.config/hypr/ 2>/dev/null || true
-        cp .config/hypr/hyprlock-video.conf ~/.config/hypr/ 2>/dev/null || true
-        cp .config/hypr/hypridle.conf ~/.config/hypr/ 2>/dev/null || true
-        
-        # Copy scripts
+        cp .config/hypr/*.conf ~/.config/hypr/ 2>/dev/null || true
         if [ -d ".config/hypr/scripts" ]; then
             mkdir -p ~/.config/hypr/scripts
             cp .config/hypr/scripts/*.sh ~/.config/hypr/scripts/ 2>/dev/null || true
             chmod +x ~/.config/hypr/scripts/*.sh 2>/dev/null || true
-            echo -e "  ${GREEN}[OK] Hyprland scripts copied${NC}"
         fi
-        
-        echo -e "  ${GREEN}[OK] Hyprland configs copied${NC}"
     fi
-    if [ -d ".config/waybar" ]; then
-        cp -r .config/waybar/* ~/.config/waybar/ 2>/dev/null && echo -e "  ${GREEN}[OK] Waybar configs copied${NC}"
-    fi
-    if [ -d ".config/kitty" ]; then
-        cp -r .config/kitty/* ~/.config/kitty/ 2>/dev/null && echo -e "  ${GREEN}[OK] Kitty configs copied${NC}"
-    fi
-    if [ -d ".config/btop" ]; then
-        cp -r .config/btop/* ~/.config/btop/ 2>/dev/null && echo -e "  ${GREEN}[OK] btop configs copied${NC}"
-    fi
-    if [ -d ".config/neofetch" ]; then
-        cp -r .config/neofetch/* ~/.config/neofetch/ 2>/dev/null && echo -e "  ${GREEN}[OK] Neofetch configs copied${NC}"
-    fi
-    if [ -d ".config/mako" ]; then
-        cp -r .config/mako/* ~/.config/mako/ 2>/dev/null && echo -e "  ${GREEN}[OK] Mako notification config copied${NC}"
-    fi
+    cp -r .config/waybar/* ~/.config/waybar/ 2>/dev/null || true
+    cp -r .config/kitty/* ~/.config/kitty/ 2>/dev/null || true
+    cp -r .config/btop/* ~/.config/btop/ 2>/dev/null || true
+    cp -r .config/neofetch/* ~/.config/neofetch/ 2>/dev/null || true
+    cp -r .config/mako/* ~/.config/mako/ 2>/dev/null || true
     
-    # Remove old hyprpaper.conf to ensure fresh config
-    rm -f ~/.config/hypr/hyprpaper.conf 2>/dev/null || true
-    
-    # Determine default wallpaper
+    # Configure wallpaper
     echo -e "${GREEN}[*] Configuring wallpaper...${NC}"
+    LIVE_DIR="$HOME/.config/hypr/wallpapers/live-wallpapers"
+    DARK_DIR="$HOME/.config/hypr/wallpapers/dark-theme"
     
-    # Check for live wallpapers first
-    echo -e "  ${GREEN}Checking wallpaper folders...${NC}"
-    # Fix: Use actual user's home, not root's home when running with sudo
-    if [ -n "$SUDO_USER" ]; then
-        ACTUAL_HOME="/home/$SUDO_USER"
-    else
-        ACTUAL_HOME="$HOME"
-    fi
-    LIVE_DIR="$ACTUAL_HOME/.config/hypr/wallpapers/live-wallpapers"
-    DARK_DIR="$ACTUAL_HOME/.config/hypr/wallpapers/dark-theme"
-    LIGHT_DIR="$ACTUAL_HOME/.config/hypr/wallpapers/light-theme"
-    echo -e "  ${GREEN}Home directory: $ACTUAL_HOME${NC}"
-    
-    # Check all wallpaper folders
-    TOTAL_WALLPAPERS=0
-    
-    if [ -d "$LIVE_DIR" ]; then
-        LIVE_COUNT=$(find "$LIVE_DIR" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.webp" -o -iname "*.gif" \) 2>/dev/null | wc -l)
-        echo -e "    ${GREEN}live-wallpapers: $LIVE_COUNT images${NC}"
-        TOTAL_WALLPAPERS=$((TOTAL_WALLPAPERS + LIVE_COUNT))
-    fi
-    
-    if [ -d "$DARK_DIR" ]; then
-        DARK_COUNT=$(find "$DARK_DIR" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.webp" \) 2>/dev/null | wc -l)
-        echo -e "    ${GREEN}dark-theme: $DARK_COUNT images${NC}"
-        TOTAL_WALLPAPERS=$((TOTAL_WALLPAPERS + DARK_COUNT))
-    fi
-    
-    if [ -d "$LIGHT_DIR" ]; then
-        LIGHT_COUNT=$(find "$LIGHT_DIR" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.webp" \) 2>/dev/null | wc -l)
-        echo -e "    ${GREEN}light-theme: $LIGHT_COUNT images${NC}"
-        TOTAL_WALLPAPERS=$((TOTAL_WALLPAPERS + LIGHT_COUNT))
-    fi
-    
-    echo -e "  ${GREEN}Total wallpapers found: $TOTAL_WALLPAPERS${NC}"
-    
-    # Check for ANY image files in live wallpapers
     LIVE_IMG=$(find "$LIVE_DIR" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.webp" -o -iname "*.gif" \) 2>/dev/null | head -n1)
     if [ -n "$LIVE_IMG" ]; then
         DEFAULT_WALLPAPER="$LIVE_IMG"
         echo -e "  ${GREEN}[OK] Using LIVE wallpaper: $(basename $LIVE_IMG)${NC}"
-    # Then check for dark theme wallpapers
     elif [ -d "$DARK_DIR" ]; then
         DARK_IMG=$(find "$DARK_DIR" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.webp" \) 2>/dev/null | head -n1)
         if [ -n "$DARK_IMG" ]; then
             DEFAULT_WALLPAPER="$DARK_IMG"
             echo -e "  ${GREEN}[OK] Using DARK THEME wallpaper: $(basename $DARK_IMG)${NC}"
-        else
-            echo -e "  ${GREEN}[WARN] No images found in dark-theme/${NC}"
-            DEFAULT_WALLPAPER=""
         fi
-    else
-        echo -e "  ${GREEN}[WARN] No wallpapers found! Using solid color.${NC}"
-        DEFAULT_WALLPAPER=""
     fi
     
-    # Generate hyprpaper.conf
-    if [ -n "$DEFAULT_WALLPAPER" ] && [ -f "$DEFAULT_WALLPAPER" ]; then
+    if [ -n "$DEFAULT_WALLPAPER" ]; then
         cat > ~/.config/hypr/hyprpaper.conf << EOF
 preload = $DEFAULT_WALLPAPER
 wallpaper = ,$DEFAULT_WALLPAPER
 splash = false
 ipc = on
 EOF
-        echo -e "  ${GREEN}[OK] hyprpaper.conf created with:${NC}"
-        echo -e "    ${GREEN}$DEFAULT_WALLPAPER${NC}"
+        sed -i "s|path = .*|path = $DEFAULT_WALLPAPER|" "$HOME/.config/hypr/hyprlock.conf" 2>/dev/null || true
         
-        # Update hyprlock.conf to use SAME wallpaper
-        if [ -f "$HOME/.config/hypr/hyprlock.conf" ]; then
-            echo -e "  ${GREEN}[*] Updating hyprlock.conf to match...${NC}"
-            sed -i "s|path = .*|path = $DEFAULT_WALLPAPER|" "$HOME/.config/hypr/hyprlock.conf" 2>/dev/null && \
-                echo -e "    ${GREEN}[OK] hyprlock.conf updated${NC}" || \
-                echo -e "    ${GREEN}[WARN] Could not update hyprlock.conf${NC}"
-        fi
-        
-        # Set SDDM wallpaper (with video support!) - only if SDDM is selected
-        if [ "$DISPLAY_MANAGER" = "sddm" ] && [ -d "/usr/share/sddm/themes/sddm-astronaut-theme" ]; then
+        # SDDM wallpaper with VIDEO support
+        if [ -d "/usr/share/sddm/themes/sddm-astronaut-theme" ]; then
             echo -e "${GREEN}[*] Setting SDDM wallpaper...${NC}"
             
-            # Check for video wallpapers in downloaded folder
-            # Use the actual user's home, not root's home (when running with sudo)
-            if [ -n "$SUDO_USER" ]; then
-                ACTUAL_HOME="/home/$SUDO_USER"
-            else
-                ACTUAL_HOME="$HOME"
-            fi
-            LIVE_DIR="$ACTUAL_HOME/.config/hypr/wallpapers/live-wallpapers"
             VIDEO_WALL=""
-            echo -e "  ${GREEN}Checking for videos in: $LIVE_DIR${NC}"
             if [ -d "$LIVE_DIR" ]; then
-                # Get the FIRST video file found (alphabetically sorted)
-                VIDEO_WALL=$(find "$LIVE_DIR" -maxdepth 1 -type f \( -iname "*.mp4" -o -iname "*.webm" -o -iname "*.mkv" -o -iname "*.mov" -o -iname "*.avi" \) 2>/dev/null | sort | head -n1)
-                if [ -n "$VIDEO_WALL" ]; then
-                    echo -e "  ${GREEN}[OK] Found video: $(basename "$VIDEO_WALL")${NC}"
-                else
-                    echo -e "  ${YELLOW}[WARN] No video files found${NC}"
-                fi
-            else
-                echo -e "  ${YELLOW}[WARN] Folder does not exist: $LIVE_DIR${NC}"
+                VIDEO_WALL=$(find "$LIVE_DIR" -type f \( -iname "*.mp4" -o -iname "*.webm" \) 2>/dev/null | head -n1)
             fi
             
-            # Find the active theme config file
             THEME_CONFIG="/usr/share/sddm/themes/sddm-astronaut-theme/Themes/astronaut.conf"
             if [ ! -f "$THEME_CONFIG" ]; then
-                # Fallback to any .conf in Themes directory
                 THEME_CONFIG=$(find /usr/share/sddm/themes/sddm-astronaut-theme/Themes/ -name "*.conf" 2>/dev/null | head -n1)
             fi
             
-            # VIDEO WALLPAPER CODE - First video found is used
-            if [ -n "$VIDEO_WALL" ] && [ -f "$VIDEO_WALL" ]; then
-                echo -e "  ${GREEN}[OK] Using VIDEO wallpaper for SDDM${NC}"
-                echo -e "  ${GREEN}Copying: $VIDEO_WALL${NC}"
+            if [ -n "$VIDEO_WALL" ]; then
+                echo -e "  ${GREEN}[OK] Using VIDEO wallpaper for SDDM!${NC}"
                 sudo cp "$VIDEO_WALL" /usr/share/sddm/themes/sddm-astronaut-theme/background.mp4
                 sudo chmod 644 /usr/share/sddm/themes/sddm-astronaut-theme/background.mp4
                 
-                # Create theme.conf.user
-                echo -e "  ${GREEN}Creating theme.conf.user...${NC}"
-                sudo tee /usr/share/sddm/themes/sddm-astronaut-theme/theme.conf.user > /dev/null << 'EOF'
+                sudo tee /usr/share/sddm/themes/sddm-astronaut-theme/theme.conf.user > /dev/null << EOF
 [General]
 Background="background.mp4"
+CropBackground="true"
 FormPosition="left"
 HaveFormBackground="false"
 PartialBlur="false"
 FullBlur="false"
-ScreenWidth=""
-ScreenHeight=""
-ScreenPadding="0"
 EOF
                 
-                # ALSO update the main theme config file
                 if [ -f "$THEME_CONFIG" ]; then
-                    echo -e "  ${GREEN}Updating theme config: $THEME_CONFIG${NC}"
                     sudo sed -i 's|Background=.*|Background="background.mp4"|g' "$THEME_CONFIG" 2>/dev/null || true
                     sudo sed -i 's|FormPosition=.*|FormPosition="left"|g' "$THEME_CONFIG" 2>/dev/null || true
+                    sudo sed -i 's|CropBackground=.*|CropBackground="true"|g' "$THEME_CONFIG" 2>/dev/null || true
                 fi
+            else
+                sudo cp "$DEFAULT_WALLPAPER" /usr/share/sddm/themes/sddm-astronaut-theme/background.jpg
+                sudo chmod 644 /usr/share/sddm/themes/sddm-astronaut-theme/background.jpg
                 
-                echo -e "  ${GREEN}[OK] SDDM video wallpaper set: $(basename "$VIDEO_WALL")${NC}"
-            elif [ -n "$DEFAULT_WALLPAPER" ] && [ -f "$DEFAULT_WALLPAPER" ]; then
-                # Fall back to static image if no video
-                echo -e "  ${GREEN}[OK] Using STATIC wallpaper for SDDM (no video found)${NC}"
-                sudo cp "$DEFAULT_WALLPAPER" /usr/share/sddm/themes/sddm-astronaut-theme/background.jpg 2>/dev/null
-                sudo chmod 644 /usr/share/sddm/themes/sddm-astronaut-theme/background.jpg 2>/dev/null
-                
-                # Create theme.conf.user - Force fullscreen!
                 sudo tee /usr/share/sddm/themes/sddm-astronaut-theme/theme.conf.user > /dev/null << EOF
 [General]
 Background="background.jpg"
+CropBackground="true"
 FormPosition="left"
 HaveFormBackground="false"
 PartialBlur="false"
 FullBlur="false"
-ScreenWidth=""
-ScreenHeight=""
-ScreenPadding="0"
 EOF
                 
-                # Backup and replace Main.qml for true fullscreen
-                sudo cp /usr/share/sddm/themes/sddm-astronaut-theme/Main.qml /usr/share/sddm/themes/sddm-astronaut-theme/Main.qml.backup 2>/dev/null || true
-                
-                # Get actual screen dimensions
-                ACTUAL_RES=$(xrandr 2>/dev/null | grep '\*' | awk '{print $1}' | head -n1)
-                if [ -z "$ACTUAL_RES" ]; then
-                    ACTUAL_RES="1920x1080"
+                if [ -f "$THEME_CONFIG" ]; then
+                    sudo sed -i 's|Background=.*|Background="background.jpg"|g' "$THEME_CONFIG" 2>/dev/null || true
                 fi
-                
-                # Modify Main.qml
-                MAIN_QML_FILE="/usr/share/sddm/themes/sddm-astronaut-theme/Main.qml"
-                if [ -f "$MAIN_QML_FILE" ]; then
-                    sudo sed -i '/Image {/,/fillMode:/{s/fillMode: Image.PreserveAspectCrop/fillMode: Image.Stretch/}' "$MAIN_QML_FILE" 2>/dev/null || true
-                    sudo sed -i '/Image {/,/fillMode:/{s/fillMode: Image.PreserveAspectFit/fillMode: Image.Stretch/}' "$MAIN_QML_FILE" 2>/dev/null || true
-                    echo -e "  ${GREEN}[OK] Main.qml background modified to Stretch${NC}"
-                fi
-                
-                echo -e "  ${GREEN}[OK] SDDM static wallpaper set${NC}"
-            fi
-            
-            # Copy fonts for the theme
-            if [ -d "/usr/share/sddm/themes/sddm-astronaut-theme/Fonts" ]; then
-                echo -e "  ${GREEN}[*] Installing SDDM theme fonts...${NC}"
-                sudo cp -r /usr/share/sddm/themes/sddm-astronaut-theme/Fonts/* /usr/share/fonts/ 2>/dev/null || true
-                sudo fc-cache -fv 2>/dev/null || true
             fi
         fi
-    else
-        echo -e "  ${GREEN}[WARN] No wallpaper available, hyprpaper will use default${NC}"
     fi
 fi
 
 # Fix permissions
-echo -e "${GREEN}[*] Fixing permissions...${NC}"
 sudo chown -R "$USER:$USER" "$HOME" 2>/dev/null || true
-sudo chmod 755 "$HOME" 2>/dev/null || true
-
-# Verify Hyprland binary
-if [ -x "/usr/bin/Hyprland" ]; then
-    echo -e "  ${GREEN}[OK] Hyprland binary found${NC}"
-else
-    echo -e "  ${GREEN}[WARN] Hyprland binary not found at /usr/bin/Hyprland${NC}"
-    HYPRLAND_PATH=$(which Hyprland 2>/dev/null || find /usr -name "Hyprland" -type f 2>/dev/null | head -n1)
-    if [ -n "$HYPRLAND_PATH" ]; then
-        sudo ln -sf "$HYPRLAND_PATH" /usr/bin/Hyprland 2>/dev/null || true
-    fi
-fi
 
 # Final summary
-echo -e "${GREEN}[*] Display Manager configured${NC}"
-echo -e "  ${GREEN}[OK] SDDM will provide graphical login screen${NC}"
-echo -e "  ${GREEN}[OK] SDDM supports VIDEO wallpapers (astronaut theme)!${NC}"
-echo -e "  ${GREEN}[OK] Hyprland is the default session${NC}"
-echo -e "  ${GREEN}[OK] hyprlock works for locking (SUPER+L)${NC}"
-echo -e "  ${GREEN}[OK] Video lock screen: SUPER+SHIFT+L (requires mpvpaper)${NC}"
-echo -e "  ${GREEN}[OK] Live wallpaper: SUPER+F10 (start), SUPER+SHIFT+F10 (stop)${NC}"
-
 echo ""
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}     Installation Complete!${NC}"
 echo -e "${GREEN}     Mode: ${MODE}${NC}"
-echo -e "${GREEN}     Display Manager: ${DISPLAY_MANAGER}${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
 
@@ -1154,29 +661,6 @@ if [ "$MODE" != "minimal" ] && [ -n "$backup_dir" ]; then
     echo ""
 fi
 
-echo -e "${GREEN}IMPORTANT FIXES APPLIED:${NC}"
-if [ "$DISPLAY_MANAGER" = "sddm" ]; then
-    echo -e "  - SDDM now uses X11 backend (more stable)"
-    echo -e "  - SDDM Astronaut theme with VIDEO support installed"
-fi
-echo -e "  - NVIDIA environment variables set"
-echo -e "  - Display rendering fixes applied"
-echo ""
-
-if [ "$DISPLAY_MANAGER" = "sddm" ]; then
-    echo -e "${GREEN}If SDDM theme didn't change:${NC}"
-    echo -e "  Run: sudo systemctl restart sddm"
-    echo -e "  Or reboot: sudo reboot"
-    echo -e "  Test theme: sddm-greeter-qt6 --test-mode --theme /usr/share/sddm/themes/sddm-astronaut-theme/"
-    echo ""
-    echo -e "${GREEN}If you still get login loop:${NC}"
-    echo -e "  1. At SDDM, press Ctrl+Alt+F2"
-    echo -e "  2. Login and run: Hyprland"
-    echo -e "  3. Check error message"
-    echo ""
-fi
-
-# Ask for reboot
 echo -e "${GREEN}Do you want to reboot now? (y/N): ${NC}"
 read -r reboot_choice
 if [[ "$reboot_choice" =~ ^[Yy]$ ]]; then

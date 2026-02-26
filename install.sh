@@ -589,7 +589,7 @@ DefaultSession=hyprland.desktop
 
 [X11]
 # Force SDDM to use detected screen resolution
-ServerArguments=-nolisten tcp
+ServerArguments=-nolisten tcp -dpi 96
 
 [Theme]
 Current=sddm-astronaut-theme
@@ -960,8 +960,8 @@ EOF
                 sudo cp "$DEFAULT_WALLPAPER" /usr/share/sddm/themes/sddm-astronaut-theme/background.jpg 2>/dev/null
                 sudo chmod 644 /usr/share/sddm/themes/sddm-astronaut-theme/background.jpg 2>/dev/null
                 
-                # Create theme.conf.user - Stretch to fill screen!
-                # Leave ScreenWidth/Height empty for auto-detection (prevents black bars)
+                # Create theme.conf.user - Force fullscreen!
+                # Use Qt auto-sizing by leaving dimensions empty
                 sudo tee /usr/share/sddm/themes/sddm-astronaut-theme/theme.conf.user > /dev/null << EOF
 [General]
 Background="background.jpg"
@@ -973,6 +973,26 @@ ScreenWidth=""
 ScreenHeight=""
 ScreenPadding="0"
 EOF
+                
+                # Create a custom Main.qml that forces fullscreen
+                sudo tee /usr/share/sddm/themes/sddm-astronaut-theme/Main.qml.patch > /dev/null << 'MAINQML'
+import QtQuick 2.15
+import QtQuick.Window 2.15
+
+Item {
+    id: root
+    anchors.fill: parent
+    
+    Image {
+        id: backgroundImage
+        source: config.Background
+        anchors.fill: parent
+        fillMode: Image.Stretch
+        smooth: true
+        cache: false
+    }
+}
+MAINQML
                 
                 # Also update the main theme config (leave ScreenWidth/Height for auto-detect)
                 if [ -f "$THEME_CONFIG" ]; then

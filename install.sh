@@ -1042,7 +1042,8 @@ EOF
                 echo -e "  ${GREEN}Copying: $VIDEO_WALL${NC}"
                 sudo cp "$VIDEO_WALL" /usr/share/sddm/themes/sddm-astronaut-theme/background.mp4
                 sudo chmod 644 /usr/share/sddm/themes/sddm-astronaut-theme/background.mp4
-                ls -la /usr/share/sddm/themes/sddm-astronaut-theme/background.mp4
+                
+                # Create theme.conf.user
                 echo -e "  ${GREEN}Creating theme.conf.user...${NC}"
                 sudo tee /usr/share/sddm/themes/sddm-astronaut-theme/theme.conf.user > /dev/null << 'EOF'
 [General]
@@ -1055,7 +1056,14 @@ ScreenWidth=""
 ScreenHeight=""
 ScreenPadding="0"
 EOF
-                cat /usr/share/sddm/themes/sddm-astronaut-theme/theme.conf.user
+                
+                # ALSO update the main theme config file
+                if [ -f "$THEME_CONFIG" ]; then
+                    echo -e "  ${GREEN}Updating theme config: $THEME_CONFIG${NC}"
+                    sudo sed -i 's|Background=.*|Background="background.mp4"|g' "$THEME_CONFIG" 2>/dev/null || true
+                    sudo sed -i 's|FormPosition=.*|FormPosition="left"|g' "$THEME_CONFIG" 2>/dev/null || true
+                fi
+                
                 echo -e "  ${GREEN}[OK] SDDM video wallpaper set: $(basename "$VIDEO_WALL")${NC}"
             elif [ -n "$DEFAULT_WALLPAPER" ] && [ -f "$DEFAULT_WALLPAPER" ]; then
                 # Fall back to static image if no video

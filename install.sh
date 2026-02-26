@@ -974,25 +974,27 @@ ScreenHeight=""
 ScreenPadding="0"
 EOF
                 
-                # Create a custom Main.qml that forces fullscreen
-                sudo tee /usr/share/sddm/themes/sddm-astronaut-theme/Main.qml.patch > /dev/null << 'MAINQML'
-import QtQuick 2.15
-import QtQuick.Window 2.15
-
-Item {
-    id: root
-    anchors.fill: parent
-    
-    Image {
-        id: backgroundImage
-        source: config.Background
-        anchors.fill: parent
-        fillMode: Image.Stretch
-        smooth: true
-        cache: false
-    }
-}
-MAINQML
+                # Backup and replace Main.qml for true fullscreen
+                sudo cp /usr/share/sddm/themes/sddm-astronaut-theme/Main.qml /usr/share/sddm/themes/sddm-astronaut-theme/Main.qml.backup 2>/dev/null || true
+                
+                # Get actual screen dimensions
+                ACTUAL_RES=$(xrandr 2>/dev/null | grep '\*' | awk '{print $1}' | head -n1)
+                if [ -z "$ACTUAL_RES" ]; then
+                    ACTUAL_RES="1920x1080"
+                fi
+                AWIDTH=$(echo $ACTUAL_RES | cut -d'x' -f1)
+                AHEIGHT=$(echo $ACTUAL_RES | cut -d'x' -f2)
+                
+                # Don't replace Main.qml completely - just modify background Image
+                MAIN_QML_FILE="/usr/share/sddm/themes/sddm-astronaut-theme/Main.qml"
+                if [ -f "$MAIN_QML_FILE" ]; then
+                    # Force background Image to fill parent with Stretch
+                    sudo sed -i '/Image {/,/fillMode:/{s/fillMode: Image.PreserveAspectCrop/fillMode: Image.Stretch/}' "$MAIN_QML_FILE" 2>/dev/null || true
+                    sudo sed -i '/Image {/,/fillMode:/{s/fillMode: Image.PreserveAspectFit/fillMode: Image.Stretch/}' "$MAIN_QML_FILE" 2>/dev/null || true
+                    # Ensure anchors.fill: parent is set
+                    sudo sed -i '/id: backgroundImage/,/^    }/{s/width: .*$/anchors.fill: parent/; s/height: .*$/anchors.fill: parent/}' "$MAIN_QML_FILE" 2>/dev/null || true
+                    echo -e "  ${GREEN}[OK] Main.qml background modified to Stretch${NC}"
+                fi
                 
                 # Also update the main theme config (leave ScreenWidth/Height for auto-detect)
                 if [ -f "$THEME_CONFIG" ]; then

@@ -945,19 +945,17 @@ EOF
                 sudo cp "$DEFAULT_WALLPAPER" /usr/share/sddm/themes/sddm-astronaut-theme/background.jpg 2>/dev/null
                 sudo chmod 644 /usr/share/sddm/themes/sddm-astronaut-theme/background.jpg 2>/dev/null
                 
-                # Create theme.conf.user with image background - Stretch to fill screen!
+                # Create theme.conf.user - Stretch to fill screen!
+                # NOTE: CropBackground removed - we're modifying Background.qml directly for Stretch
                 sudo tee /usr/share/sddm/themes/sddm-astronaut-theme/theme.conf.user > /dev/null << EOF
 [General]
 Background="background.jpg"
-CropBackground="true"
 FormPosition="left"
 HaveFormBackground="false"
 PartialBlur="false"
 FullBlur="false"
 ScreenWidth=""
 ScreenHeight=""
-BackgroundHorizontalAlignment="center"
-BackgroundVerticalAlignment="center"
 EOF
                 
                 # Also update the main theme config
@@ -966,12 +964,15 @@ EOF
                     sudo sed -i 's|FormPosition=.*|FormPosition="left"|g' "$THEME_CONFIG" 2>/dev/null || true
                 fi
                 
-                # Modify Background.qml to use Stretch instead of PreserveAspectCrop
-                BG_QML="/usr/share/sddm/themes/sddm-astronaut-theme/Background.qml"
-                if [ -f "$BG_QML" ]; then
-                    sudo sed -i 's/fillMode: Image.PreserveAspectCrop/fillMode: Image.Stretch/g' "$BG_QML" 2>/dev/null || true
-                    echo -e "  ${GREEN}[OK] Background.qml modified to Stretch${NC}"
-                fi
+                # Modify ALL QML files to use Stretch instead of PreserveAspectCrop
+                echo -e "  ${GREEN}[*] Modifying QML files for full screen stretch...${NC}"
+                for qml_file in /usr/share/sddm/themes/sddm-astronaut-theme/*.qml; do
+                    if [ -f "$qml_file" ]; then
+                        sudo sed -i 's/fillMode: Image.PreserveAspectCrop/fillMode: Image.Stretch/g' "$qml_file" 2>/dev/null || true
+                        sudo sed -i 's/fillMode: Image.PreserveAspectFit/fillMode: Image.Stretch/g' "$qml_file" 2>/dev/null || true
+                    fi
+                done
+                echo -e "  ${GREEN}[OK] All QML files modified to Stretch${NC}"
                 echo -e "  ${GREEN}[OK] SDDM static wallpaper set${NC}"
             fi
             

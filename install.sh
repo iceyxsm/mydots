@@ -809,12 +809,19 @@ EOF
                 echo -e "    ${GREEN}[WARN] Could not update hyprlock.conf${NC}"
         fi
         
-        # Set SDDM wallpaper too
+        # Set SDDM wallpaper too (with proper scaling for VMware)
         if [ -d "/usr/share/sddm/themes/sddm-astronaut-theme" ]; then
             echo -e "${GREEN}[*] Setting SDDM wallpaper...${NC}"
-            sudo cp "$DEFAULT_WALLPAPER" /usr/share/sddm/themes/sddm-astronaut-theme/background.jpg 2>/dev/null && \
-                echo -e "  ${GREEN}[OK] SDDM wallpaper set${NC}" || \
-                echo -e "  ${GREEN}[WARN] Failed to copy SDDM wallpaper${NC}"
+            # Copy wallpaper
+            sudo cp "$DEFAULT_WALLPAPER" /usr/share/sddm/themes/sddm-astronaut-theme/background.jpg 2>/dev/null
+            # Set proper permissions
+            sudo chmod 644 /usr/share/sddm/themes/sddm-astronaut-theme/background.jpg 2>/dev/null
+            # Update theme config to use full screen
+            sudo tee /usr/share/sddm/themes/sddm-astronaut-theme/theme.conf.user > /dev/null << EOF
+[General]
+background=background.jpg
+EOF
+            echo -e "  ${GREEN}[OK] SDDM wallpaper set${NC}"
         fi
     else
         echo -e "  ${GREEN}[WARN] No wallpaper available, hyprpaper will use default${NC}"

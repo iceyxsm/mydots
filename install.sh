@@ -167,20 +167,29 @@ mkdir -p ~/.config/{hypr,waybar,kitty,btop/themes,neofetch,mako}
 mkdir -p ~/.config/hypr/wallpapers/{live-wallpapers,dark-theme,light-theme}
 mkdir -p ~/Pictures
 
-# Copy local wallpapers FIRST (before trying to download)
-echo -e "${GREEN}[*] Copying local wallpapers...${NC}"
+# Copy local wallpapers FIRST (but DON'T overwrite user files)
+echo -e "${GREEN}[*] Checking local wallpapers...${NC}"
+
+# Only copy dark-theme wallpapers if folder is empty
 if [ -d ".config/hypr/wallpapers/dark-theme" ]; then
-    cp -r .config/hypr/wallpapers/dark-theme/* ~/.config/hypr/wallpapers/dark-theme/ 2>/dev/null
-    if [ "$(ls -A ~/.config/hypr/wallpapers/dark-theme/ 2>/dev/null)" ]; then
-        echo -e "  ${GREEN}[OK] Dark theme wallpapers copied${NC}"
+    DARK_COUNT=$(ls -1 ~/.config/hypr/wallpapers/dark-theme/ 2>/dev/null | wc -l)
+    if [ "$DARK_COUNT" -eq 0 ]; then
+        # Folder is empty, copy defaults
+        cp -r .config/hypr/wallpapers/dark-theme/* ~/.config/hypr/wallpapers/dark-theme/ 2>/dev/null
+        echo -e "  ${GREEN}[OK] Default dark theme wallpapers copied${NC}"
     else
-        echo -e "  ${GREEN}[WARN] No dark theme wallpapers found in repo${NC}"
+        echo -e "  ${GREEN}[OK] User dark theme wallpapers kept ($DARK_COUNT files)${NC}"
     fi
 fi
+
+# Only copy light-theme wallpapers if folder is empty
 if [ -d ".config/hypr/wallpapers/light-theme" ]; then
-    cp -r .config/hypr/wallpapers/light-theme/* ~/.config/hypr/wallpapers/light-theme/ 2>/dev/null
-    if [ "$(ls -A ~/.config/hypr/wallpapers/light-theme/ 2>/dev/null)" ]; then
-        echo -e "  ${GREEN}[OK] Light theme wallpapers copied${NC}"
+    LIGHT_COUNT=$(ls -1 ~/.config/hypr/wallpapers/light-theme/ 2>/dev/null | wc -l)
+    if [ "$LIGHT_COUNT" -eq 0 ]; then
+        cp -r .config/hypr/wallpapers/light-theme/* ~/.config/hypr/wallpapers/light-theme/ 2>/dev/null
+        echo -e "  ${GREEN}[OK] Default light theme wallpapers copied${NC}"
+    else
+        echo -e "  ${GREEN}[OK] User light theme wallpapers kept ($LIGHT_COUNT files)${NC}"
     fi
 fi
 

@@ -890,7 +890,7 @@ EOF
                 sudo tee /usr/share/sddm/themes/sddm-astronaut-theme/theme.conf.user > /dev/null << EOF
 [General]
 Background="background.mp4"
-FillMode="PreserveAspectCrop"
+CropBackground="true"
 FormPosition="left"
 PartialBlur="false"
 HaveFormBackground="false"
@@ -899,6 +899,8 @@ EOF
                 # Also update the main theme config
                 if [ -f "$THEME_CONFIG" ]; then
                     sudo sed -i 's|Background=.*|Background="background.mp4"|g' "$THEME_CONFIG" 2>/dev/null || true
+                    sudo sed -i 's|FormPosition=.*|FormPosition="left"|g' "$THEME_CONFIG" 2>/dev/null || true
+                    sudo sed -i 's|CropBackground=.*|CropBackground="true"|g' "$THEME_CONFIG" 2>/dev/null || true
                 fi
                 echo -e "  ${GREEN}[OK] SDDM video wallpaper set!${NC}"
             else
@@ -910,7 +912,7 @@ EOF
                 sudo tee /usr/share/sddm/themes/sddm-astronaut-theme/theme.conf.user > /dev/null << EOF
 [General]
 Background="background.jpg"
-FillMode="PreserveAspectCrop"
+CropBackground="true"
 FormPosition="left"
 PartialBlur="false"
 HaveFormBackground="false"
@@ -919,6 +921,8 @@ EOF
                 # Also update the main theme config
                 if [ -f "$THEME_CONFIG" ]; then
                     sudo sed -i 's|Background=.*|Background="background.jpg"|g' "$THEME_CONFIG" 2>/dev/null || true
+                    sudo sed -i 's|FormPosition=.*|FormPosition="left"|g' "$THEME_CONFIG" 2>/dev/null || true
+                    sudo sed -i 's|FillMode=.*|FillMode="PreserveAspectCrop"|g' "$THEME_CONFIG" 2>/dev/null || true
                 fi
                 echo -e "  ${GREEN}[OK] SDDM static wallpaper set${NC}"
             fi

@@ -1,0 +1,15 @@
+[Unit]
+Description=Custom Display Manager
+After=systemd-user-sessions.service getty@tty1.service plymouth-quit.service systemd-logind.service
+After=rc-local.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/custom-dm
+Restart=always
+RestartSec=1
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=graphical.target

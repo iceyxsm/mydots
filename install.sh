@@ -892,6 +892,8 @@ EOF
 Background="background.mp4"
 FillMode="PreserveAspectCrop"
 FormPosition="left"
+PartialBlur="false"
+HaveFormBackground="false"
 EOF
                 
                 # Also update the main theme config
@@ -910,6 +912,8 @@ EOF
 Background="background.jpg"
 FillMode="PreserveAspectCrop"
 FormPosition="left"
+PartialBlur="false"
+HaveFormBackground="false"
 EOF
                 
                 # Also update the main theme config

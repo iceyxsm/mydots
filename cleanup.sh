@@ -45,11 +45,20 @@ sudo rm -rf /var/tmp/* 2>/dev/null
 echo -e "${GREEN}✓ /tmp cleaned${NC}"
 echo ""
 
-# 5. Clean user caches
-echo -e "${YELLOW}Cleaning user caches...${NC}"
+# 5. Clean user caches and hypr backups
+echo -e "${YELLOW}Cleaning user caches and backups...${NC}"
 rm -rf ~/.cache/* 2>/dev/null
 rm -rf ~/.local/share/Trash/* 2>/dev/null
-echo -e "${GREEN}✓ User caches cleaned${NC}"
+
+# Delete hypr/config backups
+echo -e "    ${YELLOW}Deleting Hyprland backups...${NC}"
+rm -rf ~/.config_backup_* 2>/dev/null
+rm -rf ~/.config/hypr/backup* 2>/dev/null
+rm -rf ~/.config/hypr/*.bak* 2>/dev/null
+find ~ -name "*.bak.*" -type f -delete 2>/dev/null
+echo -e "    ${GREEN}✓ Backups deleted${NC}"
+
+echo -e "${GREEN}✓ User caches and backups cleaned${NC}"
 echo ""
 
 # 6. Clean old logs
@@ -59,7 +68,14 @@ sudo find /var/log -name "*.log" -type f -mtime +7 -delete 2>/dev/null
 echo -e "${GREEN}✓ Old logs cleaned${NC}"
 echo ""
 
-# 7. Show what's using space (top 20)
+# 7. Clean wallpaper downloads (optional - huge space saver)
+echo -e "${YELLOW}Checking wallpaper folders...${NC}"
+WALLPAPER_SIZE=$(du -sh ~/.config/hypr/wallpapers 2>/dev/null | cut -f1)
+echo -e "    Wallpapers using: ${WALLPAPER_SIZE:-0}"
+echo -e "    ${YELLOW}Run 'rm -rf ~/.config/hypr/wallpapers/live-wallpapers/*' to delete live wallpapers${NC}"
+echo ""
+
+# 8. Show what's using space (top 20)
 echo -e "${YELLOW}Largest directories (may take a moment)...${NC}"
 sudo du -h / 2>/dev/null | sort -rh | head -20
 echo ""

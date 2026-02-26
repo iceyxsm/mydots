@@ -616,12 +616,17 @@ FormPosition="left"
 HaveFormBackground="false"
 PartialBlur="false"
 FullBlur="false"
+BlurRadius="0"
+Blur="false"
 EOF
                 
                 if [ -f "$THEME_CONFIG" ]; then
                     sudo sed -i 's|Background=.*|Background="background.mp4"|g' "$THEME_CONFIG" 2>/dev/null || true
                     sudo sed -i 's|FormPosition=.*|FormPosition="left"|g' "$THEME_CONFIG" 2>/dev/null || true
                     sudo sed -i 's|CropBackground=.*|CropBackground="true"|g' "$THEME_CONFIG" 2>/dev/null || true
+                    sudo sed -i 's|PartialBlur=.*|PartialBlur="false"|g' "$THEME_CONFIG" 2>/dev/null || true
+                    sudo sed -i 's|FullBlur=.*|FullBlur="false"|g' "$THEME_CONFIG" 2>/dev/null || true
+                    sudo sed -i 's|BlurRadius=.*|BlurRadius="0"|g' "$THEME_CONFIG" 2>/dev/null || true
                 fi
             else
                 sudo cp "$DEFAULT_WALLPAPER" /usr/share/sddm/themes/sddm-astronaut-theme/background.jpg
@@ -635,10 +640,15 @@ FormPosition="left"
 HaveFormBackground="false"
 PartialBlur="false"
 FullBlur="false"
+BlurRadius="0"
+Blur="false"
 EOF
                 
                 if [ -f "$THEME_CONFIG" ]; then
                     sudo sed -i 's|Background=.*|Background="background.jpg"|g' "$THEME_CONFIG" 2>/dev/null || true
+                    sudo sed -i 's|PartialBlur=.*|PartialBlur="false"|g' "$THEME_CONFIG" 2>/dev/null || true
+                    sudo sed -i 's|FullBlur=.*|FullBlur="false"|g' "$THEME_CONFIG" 2>/dev/null || true
+                    sudo sed -i 's|BlurRadius=.*|BlurRadius="0"|g' "$THEME_CONFIG" 2>/dev/null || true
                 fi
             fi
         fi

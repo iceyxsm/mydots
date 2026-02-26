@@ -4,12 +4,27 @@ After=systemd-user-sessions.service getty@tty1.service plymouth-quit.service sys
 After=rc-local.service
 
 [Service]
-Type=simple
+Type=exec
 ExecStart=/usr/local/bin/custom-dm
 Restart=always
-RestartSec=1
+RestartSec=2
 StandardOutput=journal
 StandardError=journal
+Environment="QT_QPA_PLATFORM=xcb"
+Environment="QT_AUTO_SCREEN_SCALE_FACTOR=0"
+Environment="QT_QPA_PLATFORMTHEME=gtk2"
+Environment="CUSTOM_DM_GPU=$GPU_TYPE"
+Environment="CUSTOM_DM_VM=$IS_VM"
+Environment="CUSTOM_DM_LOCK=$LOCK_MODE"
+# GPU-specific settings
+$GPU_ENV
+# VM-specific settings
+$VM_ENV
+# Hardware video decoding
+Environment="LIBVA_DRIVER_NAME=i965"
+# Ensure proper cleanup on stop
+KillMode=mixed
+TimeoutStopSec=5
 
 [Install]
 WantedBy=graphical.target

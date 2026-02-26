@@ -54,6 +54,11 @@ for arg in "$@"; do
             echo "  -minstall     MINIMAL install - Maintains existing packages"
             echo "                Only installs missing packages, preserves configs"
             echo ""
+            echo "Display Managers (selected interactively):"
+            echo "  1) SDDM        - Modern Qt-based DM with video support"
+            echo "  2) Custom DM   - Python/Qt6 DM with video + true fullscreen support"
+            echo "                  Works on: Real hardware, VMs, NVIDIA/AMD/Intel"
+            echo ""
             echo "Examples:"
             echo "  ./install.sh --finstall    # Nuclear option - start fresh"
             echo "  ./install.sh -finstall     # Standard install (default)"
@@ -75,6 +80,48 @@ if [ "$EUID" -eq 0 ]; then
     echo -e "${GREEN}[!] Please do not run this script as root${NC}"
     exit 1
 fi
+
+# Display Manager Selection
+echo -e "${GREEN}========================================${NC}"
+echo -e "${GREEN}    Select Display Manager${NC}"
+echo -e "${GREEN}========================================${NC}"
+echo ""
+echo -e "${CYAN}1) SDDM (default)${NC}"
+echo "   - Modern Qt-based display manager"
+echo "   - Astronaut theme with video wallpaper support"
+echo "   - Recommended for: Most systems, familiar interface"
+echo ""
+echo -e "${CYAN}2) Custom DM (Python/Qt6)${NC}"
+echo "   - Lightweight custom display manager"
+echo "   - True fullscreen wallpaper (no black bars)"
+echo "   - Video wallpaper support (.mp4, .webm)"
+echo "   - Works on: Real hardware, VMware, VirtualBox, QEMU"
+echo ""
+
+# Auto-detect VM for default suggestion
+IS_VM=false
+if lspci 2>/dev/null | grep -iE 'vmware|virtualbox|qemu' &>/dev/null; then
+    IS_VM=true
+    DEFAULT_DM="2"
+    echo -e "${YELLOW}[INFO] Virtual Machine detected - Custom DM recommended${NC}"
+else
+    DEFAULT_DM="1"
+fi
+
+read -p "Select display manager [1-2] (default: $DEFAULT_DM): " dm_choice
+DM_CHOICE=${dm_choice:-$DEFAULT_DM}
+
+case "$DM_CHOICE" in
+    2)
+        DISPLAY_MANAGER="custom"
+        echo -e "${GREEN}[*] Custom DM selected${NC}"
+        ;;
+    *)
+        DISPLAY_MANAGER="sddm"
+        echo -e "${GREEN}[*] SDDM selected${NC}"
+        ;;
+esac
+echo ""
 
 # FRESH INSTALL MODE - NUCLEAR OPTION
 if [ "$MODE" = "fresh" ]; then
@@ -508,12 +555,17 @@ echo -e "${GREEN}[*] Enabling system services...${NC}"
 sudo systemctl enable --now bluetooth.service 2>/dev/null || echo -e "  ${GREEN}[WARN] Bluetooth service failed${NC}"
 sudo systemctl enable --now NetworkManager.service 2>/dev/null || echo -e "  ${GREEN}[WARN] NetworkManager failed${NC}"
 
-# Enable SDDM display manager (NEVER restart during script - causes logout!)
-echo -e "${GREEN}[*] Enabling SDDM display manager...${NC}"
-sudo systemctl enable sddm.service 2>/dev/null || echo -e "  ${GREEN}[WARN] SDDM enable failed${NC}"
-
-# Clear SDDM cache to force theme refresh on next boot
-sudo rm -rf /var/lib/sddm/.cache/ 2>/dev/null || true
+# Display Manager Setup
+if [ "$DISPLAY_MANAGER" = "sddm" ]; then
+    # Enable SDDM display manager (NEVER restart during script - causes logout!)
+    echo -e "${GREEN}[*] Enabling SDDM display manager...${NC}"
+    sudo systemctl enable sddm.service 2>/dev/null || echo -e "  ${GREEN}[WARN] SDDM enable failed${NC}"
+    
+    # Clear SDDM cache to force theme refresh on next boot
+    sudo rm -rf /var/lib/sddm/.cache/ 2>/dev/null || true
+else
+    echo -e "${GREEN}[*] Skipping SDDM setup (Custom DM selected)${NC}"
+fi
 
 # Auto-install VM guest tools based on detected hypervisor
 if [ "$IS_VM" = true ]; then
@@ -554,34 +606,35 @@ EOF
     echo -e "  ${GREEN}[OK] hyprland.desktop created${NC}"
 fi
 
-# Create SDDM session fix - THIS IS CRITICAL FOR LOGIN LOOP
-echo -e "${GREEN}[*] Creating SDDM session fix...${NC}"
-sudo mkdir -p /etc/sddm.conf.d
-
-# Remove old conflicting configs
-sudo rm -f /etc/sddm.conf.d/hyprland.conf 2>/dev/null || true
-sudo rm -f /etc/sddm.conf.d/10-wayland.conf 2>/dev/null || true
-
-# DON'T delete theme while SDDM is running - causes crash/restart!
-# Theme will be updated by yay --rebuildtree flag
-
-# Get actual screen resolution
-SCREEN_RES=$(xrandr 2>/dev/null | grep '*' | awk '{print $1}' | head -n1)
-if [ -z "$SCREEN_RES" ]; then
-    SCREEN_RES=$(xdpyinfo 2>/dev/null | grep dimensions | awk '{print $2}' | head -n1)
-fi
-if [ -n "$SCREEN_RES" ]; then
-    SCREEN_WIDTH=$(echo $SCREEN_RES | cut -d'x' -f1)
-    SCREEN_HEIGHT=$(echo $SCREEN_RES | cut -d'x' -f2)
-    echo -e "  ${GREEN}[OK] Detected screen resolution: ${SCREEN_WIDTH}x${SCREEN_HEIGHT}${NC}"
-else
-    SCREEN_WIDTH="1920"
-    SCREEN_HEIGHT="1080"
-    echo -e "  ${YELLOW}[WARN] Could not detect resolution, using ${SCREEN_WIDTH}x${SCREEN_HEIGHT}${NC}"
-fi
-
-# Create proper SDDM config in conf.d with detected resolution
-sudo tee /etc/sddm.conf.d/99-hyprland.conf > /dev/null << EOF
+# Create SDDM session fix - THIS IS CRITICAL FOR LOGIN LOOP (only for SDDM)
+if [ "$DISPLAY_MANAGER" = "sddm" ]; then
+    echo -e "${GREEN}[*] Creating SDDM session fix...${NC}"
+    sudo mkdir -p /etc/sddm.conf.d
+    
+    # Remove old conflicting configs
+    sudo rm -f /etc/sddm.conf.d/hyprland.conf 2>/dev/null || true
+    sudo rm -f /etc/sddm.conf.d/10-wayland.conf 2>/dev/null || true
+    
+    # DON'T delete theme while SDDM is running - causes crash/restart!
+    # Theme will be updated by yay --rebuildtree flag
+    
+    # Get actual screen resolution
+    SCREEN_RES=$(xrandr 2>/dev/null | grep '*' | awk '{print $1}' | head -n1)
+    if [ -z "$SCREEN_RES" ]; then
+        SCREEN_RES=$(xdpyinfo 2>/dev/null | grep dimensions | awk '{print $2}' | head -n1)
+    fi
+    if [ -n "$SCREEN_RES" ]; then
+        SCREEN_WIDTH=$(echo $SCREEN_RES | cut -d'x' -f1)
+        SCREEN_HEIGHT=$(echo $SCREEN_RES | cut -d'x' -f2)
+        echo -e "  ${GREEN}[OK] Detected screen resolution: ${SCREEN_WIDTH}x${SCREEN_HEIGHT}${NC}"
+    else
+        SCREEN_WIDTH="1920"
+        SCREEN_HEIGHT="1080"
+        echo -e "  ${YELLOW}[WARN] Could not detect resolution, using ${SCREEN_WIDTH}x${SCREEN_HEIGHT}${NC}"
+    fi
+    
+    # Create proper SDDM config in conf.d with detected resolution
+    sudo tee /etc/sddm.conf.d/99-hyprland.conf > /dev/null << EOF
 [General]
 DisplayServer=x11
 GreeterEnvironment=QT_QPA_PLATFORM=xcb
@@ -594,16 +647,16 @@ ServerArguments=-nolisten tcp -dpi 96
 [Theme]
 Current=sddm-astronaut-theme
 EOF
-
-# ALSO create/update /etc/sddm.conf directly (some systems need this)
-SDDM_CONF="/etc/sddm.conf"
-if [ -f "$SDDM_CONF" ]; then
-    echo -e "  ${GREEN}[*] Backing up existing /etc/sddm.conf...${NC}"
-    sudo cp "$SDDM_CONF" "$SDDM_CONF.bak.$(date +%Y%m%d%H%M%S)" 2>/dev/null || true
-fi
-
-# Create /etc/sddm.conf with theme settings
-sudo tee "$SDDM_CONF" > /dev/null << 'EOF'
+    
+    # ALSO create/update /etc/sddm.conf directly (some systems need this)
+    SDDM_CONF="/etc/sddm.conf"
+    if [ -f "$SDDM_CONF" ]; then
+        echo -e "  ${GREEN}[*] Backing up existing /etc/sddm.conf...${NC}"
+        sudo cp "$SDDM_CONF" "$SDDM_CONF.bak.$(date +%Y%m%d%H%M%S)" 2>/dev/null || true
+    fi
+    
+    # Create /etc/sddm.conf with theme settings
+    sudo tee "$SDDM_CONF" > /dev/null << 'EOF'
 [General]
 DisplayServer=x11
 GreeterEnvironment=QT_QPA_PLATFORM=xcb
@@ -613,8 +666,9 @@ InputMethod=qtvirtualkeyboard
 [Theme]
 Current=sddm-astronaut-theme
 EOF
-
-echo -e "  ${GREEN}[OK] SDDM config created (using X11 backend for stability)${NC}"
+    
+    echo -e "  ${GREEN}[OK] SDDM config created (using X11 backend for stability)${NC}"
+fi
 
 # Create Hyprland environment file with GPU fixes
 echo -e "${GREEN}[*] Creating Hyprland environment config...${NC}"
@@ -731,9 +785,12 @@ if [ "$MODE" != "minimal" ] || ! command -v yay &> /dev/null; then
         echo -e "  ${GREEN}Installing cliphist from AUR...${NC}"
         yay -S --noconfirm cliphist 2>/dev/null || echo -e "  ${GREEN}[WARN] Failed to install cliphist${NC}"
         
-        echo -e "${GREEN}[*] Installing SDDM Astronaut theme (AUR)...${NC}"
-        # Force reinstall to ensure fresh theme
-        yay -S --noconfirm --rebuildtree sddm-astronaut-theme 2>/dev/null || echo -e "  ${GREEN}[WARN] sddm-astronaut-theme install failed${NC}"
+        # Only install SDDM theme if SDDM is the selected display manager
+        if [ "$DISPLAY_MANAGER" = "sddm" ]; then
+            echo -e "${GREEN}[*] Installing SDDM Astronaut theme (AUR)...${NC}"
+            # Force reinstall to ensure fresh theme
+            yay -S --noconfirm --rebuildtree sddm-astronaut-theme 2>/dev/null || echo -e "  ${GREEN}[WARN] sddm-astronaut-theme install failed${NC}"
+        fi
         
         echo -e "${GREEN}[*] Installing mpvpaper for live wallpapers (AUR)...${NC}"
         yay -S --noconfirm mpvpaper 2>/dev/null || echo -e "  ${GREEN}[WARN] mpvpaper install failed - live wallpapers won't work${NC}"
@@ -747,16 +804,18 @@ systemctl --user enable pipewire-pulse.service 2>/dev/null || true
 systemctl --user enable wireplumber.service 2>/dev/null || true
 echo -e "  ${GREEN}[OK] PipeWire services enabled for user${NC}"
 
-# Configure SDDM theme (only if astronaut theme was installed)
-if [ -d "/usr/share/sddm/themes/sddm-astronaut-theme" ]; then
-    echo -e "${GREEN}[*] SDDM Astronaut theme installed${NC}"
-    # Verify theme config
-    if [ -f "/etc/sddm.conf.d/99-hyprland.conf" ]; then
-        echo -e "  ${GREEN}[OK] SDDM config verified${NC}"
-        cat /etc/sddm.conf.d/99-hyprland.conf | grep "Current=" | sed 's/^/    /'
+# Configure SDDM theme (only if SDDM is selected and astronaut theme was installed)
+if [ "$DISPLAY_MANAGER" = "sddm" ]; then
+    if [ -d "/usr/share/sddm/themes/sddm-astronaut-theme" ]; then
+        echo -e "${GREEN}[*] SDDM Astronaut theme installed${NC}"
+        # Verify theme config
+        if [ -f "/etc/sddm.conf.d/99-hyprland.conf" ]; then
+            echo -e "  ${GREEN}[OK] SDDM config verified${NC}"
+            cat /etc/sddm.conf.d/99-hyprland.conf | grep "Current=" | sed 's/^/    /'
+        fi
+    else
+        echo -e "  ${GREEN}[WARN] Astronaut theme not found, using default SDDM theme${NC}"
     fi
-else
-    echo -e "  ${GREEN}[WARN] Astronaut theme not found, using default SDDM theme${NC}"
 fi
 
 # Install gdown for wallpaper downloads
@@ -931,8 +990,8 @@ EOF
                 echo -e "    ${GREEN}[WARN] Could not update hyprlock.conf${NC}"
         fi
         
-        # Set SDDM wallpaper (with video support!)
-        if [ -d "/usr/share/sddm/themes/sddm-astronaut-theme" ]; then
+        # Set SDDM wallpaper (with video support!) - only if SDDM is selected
+        if [ "$DISPLAY_MANAGER" = "sddm" ] && [ -d "/usr/share/sddm/themes/sddm-astronaut-theme" ]; then
             echo -e "${GREEN}[*] Setting SDDM wallpaper...${NC}"
             
             # Check if we have video wallpapers
@@ -1073,10 +1132,27 @@ else
     fi
 fi
 
+# Install Custom DM if selected
+if [ "$DISPLAY_MANAGER" = "custom" ]; then
+    echo -e "${GREEN}[*] Installing Custom Display Manager...${NC}"
+    if [ -f "./install-custom-dm.sh" ]; then
+        sudo ./install-custom-dm.sh
+    else
+        echo -e "${YELLOW}[WARN] install-custom-dm.sh not found, skipping Custom DM installation${NC}"
+        echo -e "${YELLOW}      You can install it later with: sudo ./install-custom-dm.sh${NC}"
+    fi
+    echo ""
+fi
+
 # Final summary
 echo -e "${GREEN}[*] Display Manager configured${NC}"
-echo -e "  ${GREEN}[OK] SDDM will provide graphical login screen${NC}"
-echo -e "  ${GREEN}[OK] SDDM supports VIDEO wallpapers (astronaut theme)!${NC}"
+if [ "$DISPLAY_MANAGER" = "custom" ]; then
+    echo -e "  ${GREEN}[OK] Custom DM (Python/Qt6) will provide graphical login${NC}"
+    echo -e "  ${GREEN}[OK] True fullscreen wallpaper support enabled${NC}"
+else
+    echo -e "  ${GREEN}[OK] SDDM will provide graphical login screen${NC}"
+    echo -e "  ${GREEN}[OK] SDDM supports VIDEO wallpapers (astronaut theme)!${NC}"
+fi
 echo -e "  ${GREEN}[OK] Hyprland is the default session${NC}"
 echo -e "  ${GREEN}[OK] hyprlock works for locking (SUPER+L)${NC}"
 echo -e "  ${GREEN}[OK] Video lock screen: SUPER+SHIFT+L (requires mpvpaper)${NC}"
@@ -1086,6 +1162,7 @@ echo ""
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}     Installation Complete!${NC}"
 echo -e "${GREEN}     Mode: ${MODE}${NC}"
+echo -e "${GREEN}     Display Manager: ${DISPLAY_MANAGER}${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
 
@@ -1095,21 +1172,41 @@ if [ "$MODE" != "minimal" ] && [ -n "$backup_dir" ]; then
 fi
 
 echo -e "${GREEN}IMPORTANT FIXES APPLIED:${NC}"
-echo -e "  - SDDM now uses X11 backend (more stable)"
-echo -e "  - SDDM Astronaut theme with VIDEO support installed"
+if [ "$DISPLAY_MANAGER" = "sddm" ]; then
+    echo -e "  - SDDM now uses X11 backend (more stable)"
+    echo -e "  - SDDM Astronaut theme with VIDEO support installed"
+fi
 echo -e "  - NVIDIA environment variables set"
 echo -e "  - Display rendering fixes applied"
 echo ""
-echo -e "${GREEN}If SDDM theme didn't change:${NC}"
-echo -e "  Run: sudo systemctl restart sddm"
-echo -e "  Or reboot: sudo reboot"
-echo -e "  Test theme: sddm-greeter-qt6 --test-mode --theme /usr/share/sddm/themes/sddm-astronaut-theme/"
-echo ""
-echo -e "${GREEN}If you still get login loop:${NC}"
-echo -e "  1. At SDDM, press Ctrl+Alt+F2"
-echo -e "  2. Login and run: Hyprland"
-echo -e "  3. Check error message"
-echo ""
+
+if [ "$DISPLAY_MANAGER" = "sddm" ]; then
+    echo -e "${GREEN}If SDDM theme didn't change:${NC}"
+    echo -e "  Run: sudo systemctl restart sddm"
+    echo -e "  Or reboot: sudo reboot"
+    echo -e "  Test theme: sddm-greeter-qt6 --test-mode --theme /usr/share/sddm/themes/sddm-astronaut-theme/"
+    echo ""
+    echo -e "${GREEN}If you still get login loop:${NC}"
+    echo -e "  1. At SDDM, press Ctrl+Alt+F2"
+    echo -e "  2. Login and run: Hyprland"
+    echo -e "  3. Check error message"
+    echo ""
+    echo -e "${GREEN}Alternative Display Manager (Custom DM):${NC}"
+    echo -e "  If SDDM wallpaper doesn't show fullscreen or you have issues:"
+    echo -e "  Run: sudo ./install-custom-dm.sh"
+    echo -e "  This installs a Python/Qt6 based DM with true fullscreen support"
+    echo ""
+else
+    echo -e "${GREEN}Custom DM installed:${NC}"
+    echo -e "  - Custom DM provides true fullscreen wallpaper (no black bars)"
+    echo -e "  - To check logs: sudo journalctl -u custom-dm -f"
+    echo -e "  - To switch back to SDDM:"
+    echo -e "    sudo systemctl stop custom-dm"
+    echo -e "    sudo systemctl disable custom-dm"
+    echo -e "    sudo systemctl enable sddm"
+    echo -e "    sudo systemctl start sddm"
+    echo ""
+fi
 
 # Ask for reboot
 echo -e "${GREEN}Do you want to reboot now? (y/N): ${NC}"

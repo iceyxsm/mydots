@@ -70,6 +70,35 @@ echo -e "${GREEN}       Mode: ${MODE}${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
 
+# Interactive configuration
+echo -e "${CYAN}[*] Interactive Configuration${NC}"
+echo ""
+
+# Ask about wallpaper download
+DOWNLOAD_WALLPAPERS="n"
+if [ -d "$HOME/.config/hypr/wallpapers/live-wallpapers" ]; then
+    IMG_COUNT=$(find "$HOME/.config/hypr/wallpapers/live-wallpapers" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.gif" -o -iname "*.webp" -o -iname "*.mp4" -o -iname "*.webm" \) 2>/dev/null | wc -l)
+    if [ "$IMG_COUNT" -gt 0 ]; then
+        echo -e "${GREEN}[OK] Found $IMG_COUNT wallpapers already downloaded${NC}"
+        read -p "Download new wallpapers anyway? (y/N): " wp_choice
+        DOWNLOAD_WALLPAPERS=${wp_choice:-n}
+    else
+        read -p "Download live wallpapers? (Y/n): " wp_choice
+        DOWNLOAD_WALLPAPERS=${wp_choice:-y}
+    fi
+else
+    read -p "Download live wallpapers? (Y/n): " wp_choice
+    DOWNLOAD_WALLPAPERS=${wp_choice:-y}
+fi
+
+if [ "$DOWNLOAD_WALLPAPERS" = "y" ] || [ "$DOWNLOAD_WALLPAPERS" = "Y" ]; then
+    echo -e "${GREEN}[OK] Will download wallpapers during installation${NC}"
+else
+    echo -e "${GREEN}[OK] Skipping wallpaper download${NC}"
+fi
+
+echo ""
+
 # Check if running as root (don't allow)
 if [ "$EUID" -eq 0 ]; then 
     echo -e "${GREEN}[!] Please do not run this script as root${NC}"
@@ -533,29 +562,29 @@ if ! command -v gdown &> /dev/null; then
     export PATH="$HOME/.local/bin:$PATH"
 fi
 
-# Download wallpapers
-if [ "$MODE" != "minimal" ]; then
-    if command -v gdown &> /dev/null; then
-        LIVE_DIR="$HOME/.config/hypr/wallpapers/live-wallpapers"
-        MARKER_FILE="$LIVE_DIR/.downloaded"
-        
-        if [ -d "$LIVE_DIR" ]; then
-            IMG_COUNT=$(find "$LIVE_DIR" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.gif" -o -iname "*.webp" \) 2>/dev/null | wc -l)
-        else
-            IMG_COUNT=0
-            mkdir -p "$LIVE_DIR"
-        fi
-        
-        if [ "$IMG_COUNT" -ge 2 ] || [ -f "$MARKER_FILE" ]; then
-            echo -e "${GREEN}[*] Wallpapers already exist ($IMG_COUNT images), skipping download${NC}"
-            touch "$MARKER_FILE"
-        else
+# Download wallpapers (respect user choice)
+if [ "$DOWNLOAD_WALLPAPERS" = "y" ] || [ "$DOWNLOAD_WALLPAPERS" = "Y" ]; then
+    if [ "$MODE" != "minimal" ]; then
+        if command -v gdown &> /dev/null; then
+            LIVE_DIR="$HOME/.config/hypr/wallpapers/live-wallpapers"
+            MARKER_FILE="$LIVE_DIR/.downloaded"
+            
+            if [ -d "$LIVE_DIR" ]; then
+                IMG_COUNT=$(find "$LIVE_DIR" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.gif" -o -iname "*.webp" -o -iname "*.mp4" -o -iname "*.webm" \) 2>/dev/null | wc -l)
+            else
+                IMG_COUNT=0
+                mkdir -p "$LIVE_DIR"
+            fi
+            
             echo -e "${GREEN}[*] Downloading wallpapers from Google Drive...${NC}"
             GDRIVE_FOLDER="https://drive.google.com/drive/folders/1oS6aUxoW6DGoqzu_S3pVBlgicGPgIoYq"
             gdown --folder "$GDRIVE_FOLDER" -O "$LIVE_DIR" --remaining-ok --no-cookies 2>&1
             touch "$MARKER_FILE"
+            echo -e "${GREEN}[OK] Wallpapers downloaded!${NC}"
         fi
     fi
+else
+    echo -e "${GREEN}[*] Skipping wallpaper download as requested${NC}"
 fi
 
 # Copy configs
@@ -798,6 +827,111 @@ EOF
             fi
         fi
     fi
+fi
+
+# Telegram Bot Setup with Verification
+echo ""
+echo -e "${CYAN}========================================${NC}"
+echo -e "${CYAN}     Telegram Error Bot Setup${NC}"
+echo -e "${CYAN}========================================${NC}"
+echo ""
+
+read -p "Setup Telegram error monitoring bot? (Y/n): " setup_bot
+SETUP_BOT=${setup_bot:-y}
+
+if [ "$SETUP_BOT" = "y" ] || [ "$SETUP_BOT" = "Y" ]; then
+    echo -e "${CYAN}[*] Bot Setup Instructions:${NC}"
+    echo ""
+    echo "1. Open Telegram and search for @BotFather"
+    echo "2. Send /newbot and follow instructions"
+    echo "3. Copy the bot token (looks like: 123456789:ABC...)"
+    echo "4. Search for @userinfobot and copy your Chat ID"
+    echo ""
+    
+    # Get bot token
+    echo -n "Enter your Bot Token: "
+    read -s BOT_TOKEN
+    echo ""
+    
+    # Get chat ID
+    echo -n "Enter your Chat ID: "
+    read CHAT_ID
+    echo ""
+    
+    if [ -n "$BOT_TOKEN" ] && [ -n "$CHAT_ID" ]; then
+        echo -e "${GREEN}[*] Sending test message...${NC}"
+        
+        # Send test message
+        TEST_MSG="🧪 <b>Test Message</b>\n\nSystem: <code>$(hostname)</code>\nTime: $(date '+%Y-%m-%d %H:%M:%S')\n\nPlease reply with <b>yes</b> to confirm setup."
+        
+        TEST_RESPONSE=$(curl -s -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" \
+            -d "chat_id=$CHAT_ID" \
+            -d "text=$TEST_MSG" \
+            -d "parse_mode=HTML" 2>/dev/null)
+        
+        if echo "$TEST_RESPONSE" | grep -q '"ok":true'; then
+            echo -e "${GREEN}[OK] Test message sent!${NC}"
+            echo ""
+            echo -e "${YELLOW}[!] Check your Telegram and reply 'yes' to confirm${NC}"
+            echo ""
+            
+            # Wait for user confirmation
+            CONFIRMED=false
+            ATTEMPTS=0
+            MAX_ATTEMPTS=30  # 5 minutes (10s * 30)
+            
+            while [ "$CONFIRMED" = false ] && [ $ATTEMPTS -lt $MAX_ATTEMPTS ]; do
+                sleep 10
+                ATTEMPTS=$((ATTEMPTS + 1))
+                
+                # Check for user response
+                UPDATES=$(curl -s "https://api.telegram.org/bot$BOT_TOKEN/getUpdates?offset=-5" 2>/dev/null)
+                
+                if echo "$UPDATES" | grep -qi '"text":"yes"'; then
+                    CONFIRMED=true
+                    echo -e "${GREEN}[OK] Confirmed! Proceeding with bot installation...${NC}"
+                else
+                    echo -n "."
+                fi
+            done
+            
+            echo ""
+            
+            if [ "$CONFIRMED" = true ]; then
+                # Install bot
+                if [ -d "hypr-bot" ] && [ -f "hypr-bot/install-bot.sh" ]; then
+                    # Create config file before installing
+                    sudo mkdir -p /etc/hypr-bot
+                    echo "TELEGRAM_BOT_TOKEN=$BOT_TOKEN" | sudo tee /etc/hypr-bot/.env > /dev/null
+                    echo "TELEGRAM_CHAT_ID=$CHAT_ID" | sudo tee -a /etc/hypr-bot/.env > /dev/null
+                    sudo chmod 600 /etc/hypr-bot/.env
+                    
+                    cd hypr-bot
+                    sudo ./install-bot.sh 2>/dev/null
+                    cd ..
+                    
+                    # Start the bot
+                    sudo systemctl start hypr-bot 2>/dev/null || true
+                    
+                    echo -e "${GREEN}[OK] Bot installed and started!${NC}"
+                    echo -e "${GREEN}[OK] You will receive system error notifications on Telegram${NC}"
+                else
+                    echo -e "${YELLOW}[WARN] Bot folder not found, skipping...${NC}"
+                fi
+            else
+                echo -e "${YELLOW}[!] No confirmation received. Bot setup skipped.${NC}"
+                echo -e "${YELLOW}[!] You can set it up later by running: cd hypr-bot && sudo ./install-bot.sh${NC}"
+            fi
+        else
+            echo -e "${RED}[ERROR] Failed to send test message.${NC}"
+            echo -e "${YELLOW}[!] Please check your bot token and chat ID${NC}"
+            echo -e "${YELLOW}[!] You can set up the bot later manually${NC}"
+        fi
+    else
+        echo -e "${YELLOW}[!] Token or Chat ID not provided. Skipping bot setup.${NC}"
+    fi
+else
+    echo -e "${GREEN}[OK] Skipping bot setup${NC}"
 fi
 
 # Fix permissions

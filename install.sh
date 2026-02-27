@@ -377,22 +377,30 @@ sudo rm -rf /var/lib/sddm/.cache/ 2>/dev/null || true
 echo -e "  ${GREEN}[OK] SDDM enabled - will be active after reboot${NC}"
 
 # Verify hyprland.desktop exists
-if [ ! -f "/usr/share/wayland-sessions/hyprland.desktop" ]; then
-    echo -e "${GREEN}[WARN] hyprland.desktop not found, creating...${NC}"
-    sudo mkdir -p /usr/share/wayland-sessions
-    sudo tee /usr/share/wayland-sessions/hyprland.desktop > /dev/null << 'EOF'
+# Create hyprland.desktop with proper Exec command
+echo -e "${GREEN}[*] Creating hyprland.desktop...${NC}"
+sudo mkdir -p /usr/share/wayland-sessions
+
+# Check if start-hyprland exists (newer Hyprland with UWSM)
+if [ -f "/usr/bin/start-hyprland" ]; then
+    HYPRLAND_EXEC="/usr/bin/start-hyprland"
+    echo -e "  ${GREEN}[OK] Using start-hyprland (UWSM)${NC}"
+else
+    HYPRLAND_EXEC="/usr/bin/Hyprland"
+    echo -e "  ${GREEN}[OK] Using Hyprland directly${NC}"
+fi
+
+sudo tee /usr/share/wayland-sessions/hyprland.desktop > /dev/null << EOF
 [Desktop Entry]
 Name=Hyprland
 Comment=An intelligent dynamic tiling Wayland compositor
-Exec=/usr/bin/start-hyprland
+Exec=$HYPRLAND_EXEC
 Type=Application
 DesktopNames=Hyprland
 XDG_CURRENT_DESKTOP=Hyprland
 NoDisplay=false
 EOF
-    sudo chmod 644 /usr/share/wayland-sessions/hyprland.desktop
-    echo -e "  ${GREEN}[OK] hyprland.desktop created${NC}"
-fi
+sudo chmod 644 /usr/share/wayland-sessions/hyprland.desktop
 
 # Create SDDM config
 echo -e "${GREEN}[*] Creating SDDM session fix...${NC}"

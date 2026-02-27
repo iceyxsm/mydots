@@ -384,7 +384,7 @@ if [ ! -f "/usr/share/wayland-sessions/hyprland.desktop" ]; then
 [Desktop Entry]
 Name=Hyprland
 Comment=An intelligent dynamic tiling Wayland compositor
-Exec=/usr/bin/Hyprland
+Exec=/usr/bin/start-hyprland
 Type=Application
 DesktopNames=Hyprland
 XDG_CURRENT_DESKTOP=Hyprland

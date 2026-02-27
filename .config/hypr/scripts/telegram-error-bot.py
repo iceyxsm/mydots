@@ -29,6 +29,7 @@ logger = logging.getLogger('hypr-bot')
 class HyprlandMonitorBot:
     def __init__(self):
         self.config_file = Path.home() / '.config/hypr/telegram-bot.conf'
+        self.env_file = Path.home() / '.config/hypr/scripts/.env'
         self.bot_token = None
         self.chat_id = None
         self.load_config()
@@ -56,16 +57,43 @@ class HyprlandMonitorBot:
         self.last_positions = {}
         
     def load_config(self):
-        """Load Telegram bot configuration"""
+        """Load Telegram bot configuration from .env or JSON"""
+        # Try .env file first (preferred)
+        if self.env_file.exists():
+            try:
+                with open(self.env_file) as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line or line.startswith('#'):
+                            continue
+                        if '=' in line:
+                            key, value = line.split('=', 1)
+                            os.environ[key] = value
+                
+                self.bot_token = os.environ.get('TELEGRAM_BOT_TOKEN')
+                self.chat_id = os.environ.get('TELEGRAM_CHAT_ID')
+                
+                if self.bot_token and self.chat_id:
+                    logger.info("Config loaded from .env file")
+                    return
+            except Exception as e:
+                logger.error(f"Error loading .env: {e}")
+        
+        # Fallback to JSON config
         if self.config_file.exists():
-            with open(self.config_file) as f:
-                config = json.load(f)
-                self.bot_token = config.get('bot_token')
-                self.chat_id = config.get('chat_id')
-                logger.info("Config loaded successfully")
-        else:
-            logger.warning(f"Config file not found: {self.config_file}")
-            logger.info("Create it with: echo '{\"bot_token\": \"YOUR_TOKEN\", \"chat_id\": \"YOUR_CHAT_ID\"}' > ~/.config/hypr/telegram-bot.conf")
+            try:
+                with open(self.config_file) as f:
+                    config = json.load(f)
+                    self.bot_token = config.get('bot_token')
+                    self.chat_id = config.get('chat_id')
+                    logger.info("Config loaded from JSON file")
+                    return
+            except Exception as e:
+                logger.error(f"Error loading JSON config: {e}")
+        
+        logger.warning("No config found!")
+        logger.info(f"Create ~/.config/hypr/scripts/.env with TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID")
+        logger.info(f"Or create ~/.config/hypr/telegram-bot.conf with JSON: {{\"bot_token\": \"...\", \"chat_id\": \"...\"}}")
     
     async def send_telegram_message(self, message):
         """Send message to Telegram"""

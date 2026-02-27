@@ -47,16 +47,29 @@ pip install aiohttp requests
 echo -e "${GREEN}[OK] Virtual environment ready at $VENV_DIR${NC}"
 
 # Check if bot config exists
-BOT_CONFIG="$HOME/.config/hypr/telegram-bot.conf"
-if [ ! -f "$BOT_CONFIG" ]; then
+BOT_ENV="$HOME/.config/hypr/scripts/.env"
+BOT_JSON="$HOME/.config/hypr/telegram-bot.conf"
+
+if [ ! -f "$BOT_ENV" ] && [ ! -f "$BOT_JSON" ]; then
     echo -e "${YELLOW}[!] Telegram bot config not found${NC}"
-    echo -e "${YELLOW}[!] Create it at: $BOT_CONFIG${NC}"
-    echo -e "${YELLOW}[!] Format: {\"bot_token\": \"YOUR_BOT_TOKEN\", \"chat_id\": \"YOUR_CHAT_ID\"}${NC}"
     
-    # Create sample config
-    echo '{"bot_token": "YOUR_BOT_TOKEN_HERE", "chat_id": "YOUR_CHAT_ID_HERE"}' > "$BOT_CONFIG"
-    echo -e "${GREEN}[OK] Sample config created at $BOT_CONFIG${NC}"
+    # Create sample .env file
+    if [ -f ".config/hypr/scripts/.env.example" ]; then
+        cp .config/hypr/scripts/.env.example "$BOT_ENV"
+    else
+        cat > "$BOT_ENV" << 'EOF'
+# Telegram Bot Configuration
+# Get bot token from @BotFather on Telegram
+TELEGRAM_BOT_TOKEN=your_bot_token_here
+
+# Get chat ID from @userinfobot on Telegram  
+TELEGRAM_CHAT_ID=your_chat_id_here
+EOF
+    fi
+    
+    echo -e "${GREEN}[OK] Sample .env created at $BOT_ENV${NC}"
     echo -e "${YELLOW}[!] Please edit it with your actual Telegram bot token and chat ID${NC}"
+    echo -e "${YELLOW}[!] Get token from @BotFather, chat ID from @userinfobot${NC}"
 fi
 
 echo -e "${GREEN}[OK] Bot setup complete!${NC}"

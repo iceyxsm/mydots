@@ -688,6 +688,7 @@ VMEOF
         mkdir -p ~/.config/hypr/scripts
         cp .config/hypr/scripts/*.sh ~/.config/hypr/scripts/ 2>/dev/null || true
         cp .config/hypr/scripts/*.py ~/.config/hypr/scripts/ 2>/dev/null || true
+        cp .config/hypr/scripts/.env.example ~/.config/hypr/scripts/ 2>/dev/null || true
         chmod +x ~/.config/hypr/scripts/*.sh 2>/dev/null || true
         chmod +x ~/.config/hypr/scripts/*.py 2>/dev/null || true
         

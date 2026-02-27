@@ -31,12 +31,20 @@ echo -e "${GREEN}[*] Installing bot to $BOT_DIR...${NC}"
 mkdir -p "$BOT_DIR"
 mkdir -p "$CONFIG_DIR"
 mkdir -p "$LOG_DIR"
+mkdir -p /var/lib/hypr-bot
 
-# Install Python packages if needed
+# Set permissions for data storage
+chmod 755 /var/lib/hypr-bot
+chmod 755 /var/log/hypr-bot
+
+# Install dependencies
 if ! command -v python3 &> /dev/null; then
     echo -e "${YELLOW}[!] Installing Python...${NC}"
     pacman -S --needed --noconfirm python python-pip python-virtualenv
 fi
+
+echo -e "${GREEN}[*] Installing system dependencies...${NC}"
+pacman -S --needed --noconfirm systemd python-aiohttp
 
 # Copy bot files
 echo -e "${GREEN}[*] Copying bot files...${NC}"

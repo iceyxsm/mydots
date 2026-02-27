@@ -250,6 +250,7 @@ BASE_PACKAGES=(
     "python"
     "python-pip"
     "python-virtualenv"
+    "python-aiohttp"
     "curl"
     "jq"
 )

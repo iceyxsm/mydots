@@ -133,7 +133,7 @@ class SystemMonitorBot:
         self.recent_errors.append(error_id)
         return False
     
-    async def send_telegram_message(self, message, parse_mode='HTML'):
+    async def send_telegram_message(self, message, parse_mode='HTML', reply_markup=None):
         """Send message to Telegram"""
         if not self.bot_token or not self.chat_id:
             logger.warning("Telegram not configured")
@@ -141,12 +141,16 @@ class SystemMonitorBot:
             
         try:
             import aiohttp
+            import json
             url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
             payload = {
                 'chat_id': self.chat_id,
                 'text': message,
                 'parse_mode': parse_mode
             }
+            
+            if reply_markup:
+                payload['reply_markup'] = json.dumps(reply_markup)
             
             async with aiohttp.ClientSession() as session:
                 async with session.post(url, json=payload) as response:
@@ -157,23 +161,28 @@ class SystemMonitorBot:
                         return False
                         
         except ImportError:
-            return await self._send_with_curl(message, parse_mode)
+            return await self._send_with_curl(message, parse_mode, reply_markup)
         except Exception as e:
             logger.error(f"Error: {e}")
             return False
     
-    async def _send_with_curl(self, message, parse_mode):
+    async def _send_with_curl(self, message, parse_mode, reply_markup=None):
         try:
-            import urllib.parse
-            encoded_msg = urllib.parse.quote(message)
+            import json
             url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
             
-            cmd = [
-                'curl', '-s', '-X', 'POST', url,
-                '-d', f'chat_id={self.chat_id}',
-                '-d', f'text={encoded_msg}',
-                '-d', f'parse_mode={parse_mode}'
-            ]
+            payload = {
+                'chat_id': self.chat_id,
+                'text': message,
+                'parse_mode': parse_mode
+            }
+            
+            if reply_markup:
+                payload['reply_markup'] = json.dumps(reply_markup)
+            
+            json_payload = json.dumps(payload)
+            
+            cmd = ['curl', '-s', '-X', 'POST', url, '-H', 'Content-Type: application/json', '-d', json_payload]
             
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
             return result.returncode == 0
@@ -183,28 +192,34 @@ class SystemMonitorBot:
             return False
     
     async def send_startup_notification(self):
-        """Send system startup notification"""
+        """Send system startup notification with buttons"""
         uptime = subprocess.run(['uptime', '-p'], capture_output=True, text=True).stdout.strip()
         boot_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         
-        message = f"""🖥️ <b>System Started</b>
-
-<b>Host:</b> <code>{self.hostname}</code>
-<b>Boot Time:</b> {boot_time}
-<b>Uptime:</b> {uptime}
-
-✅ Bot is monitoring all system errors
-
-<b>Commands:</b>
-/packages - List running packages
-/pm &lt;id&gt; - Monitor specific package
-/pm 1,2,3 - Monitor multiple packages
-/nm - Normal mode (all logs)
-/ignore #ID - Ignore error
-/unignore #ID - Unignore error
-/ignoring - List ignored errors"""
-
-        await self.send_telegram_message(message)
+        message = "🖥️ <b>System Started</b>\n\n"
+        message += f"<b>Host:</b> <code>{self.hostname}</code>\n"
+        message += f"<b>Boot Time:</b> {boot_time}\n"
+        message += f"<b>Uptime:</b> {uptime}\n\n"
+        message += "✅ Bot is monitoring all system errors"
+        
+        # Create inline keyboard
+        keyboard = {
+            "inline_keyboard": [
+                [
+                    {"text": "📦 Packages", "callback_data": "/packages"},
+                    {"text": "❓ Help", "callback_data": "/help"}
+                ],
+                [
+                    {"text": "🌐 Normal Mode", "callback_data": "/nm"},
+                    {"text": "🚫 Ignored", "callback_data": "/ignoring"}
+                ],
+                [
+                    {"text": "💓 Alive Check", "callback_data": "/alive"}
+                ]
+            ]
+        }
+        
+        await self.send_telegram_message(message, reply_markup=keyboard)
         logger.info("Startup notification sent")
     
     def get_running_packages(self):
@@ -288,8 +303,14 @@ class SystemMonitorBot:
             await self.cmd_unignore(text[10:])
         elif text == '/ignoring':
             await self.cmd_ignoring()
+        elif text == '/alive':
+            await self.cmd_alive()
         elif text == '/start' or text == '/help':
             await self.cmd_help()
+        
+        # Handle callback queries from inline buttons
+        if 'callback_query' in update:
+            await self.handle_callback(update['callback_query'])
     
     async def cmd_packages(self):
         """List running packages"""
@@ -379,27 +400,104 @@ class SystemMonitorBot:
         await self.send_telegram_message('\n'.join(lines))
     
     async def cmd_help(self):
-        """Show help"""
-        help_text = """🤖 <b>System Monitor Bot Commands</b>
-
-<b>Error Management:</b>
-/ignore #ID - Ignore error with ID
-/unignore #ID - Stop ignoring error
-/ignoring - List all ignored errors
-
-<b>Package Monitoring:</b>
-/packages - List all running packages
-/pm &lt;id&gt; - Monitor specific package
-/pm 1,2,3 - Monitor multiple packages
-/nm - Normal mode (all errors)
-
-<b>Other:</b>
-/help - Show this help
-
-Errors are shown as:
-<b>[#ID]</b> [package]: message"""
+        """Show help with buttons"""
+        help_text = "🤖 <b>System Monitor Bot</b>\n\n"
+        help_text += "<b>Error Management:</b>\n"
+        help_text += "/ignore #ID - Ignore error\n"
+        help_text += "/unignore #ID - Stop ignoring\n"
+        help_text += "/ignoring - List ignored\n\n"
+        help_text += "<b>Package Monitoring:</b>\n"
+        help_text += "/packages - List packages\n"
+        help_text += "/pm &lt;id&gt; - Monitor package\n"
+        help_text += "/pm 1,2,3 - Monitor multiple\n"
+        help_text += "/nm - Normal mode (all)\n\n"
+        help_text += "<b>Bot Control:</b>\n"
+        help_text += "/alive - Check if bot is alive\n"
+        help_text += "/help - Show this help"
         
-        await self.send_telegram_message(help_text)
+        # Add buttons
+        keyboard = {
+            "inline_keyboard": [
+                [
+                    {"text": "📦 Packages", "callback_data": "/packages"},
+                    {"text": "💓 Alive", "callback_data": "/alive"}
+                ],
+                [
+                    {"text": "🌐 Normal Mode", "callback_data": "/nm"},
+                    {"text": "🚫 Ignored", "callback_data": "/ignoring"}
+                ]
+            ]
+        }
+        
+        await self.send_telegram_message(help_text, reply_markup=keyboard)
+    
+    async def cmd_alive(self):
+        """Check if bot is alive"""
+        uptime_seconds = (datetime.now() - self.startup_time).total_seconds()
+        uptime_str = str(timedelta(seconds=int(uptime_seconds)))
+        
+        # Get system info
+        try:
+            load_avg = subprocess.run(['uptime'], capture_output=True, text=True).stdout.strip()
+            mem_info = subprocess.run(['free', '-h'], capture_output=True, text=True).stdout.strip()
+        except:
+            load_avg = "N/A"
+            mem_info = "N/A"
+        
+        message = "💓 <b>Bot is Alive!</b>\n\n"
+        message += f"<b>Hostname:</b> <code>{self.hostname}</code>\n"
+        message += f"<b>Uptime:</b> {uptime_str}\n"
+        message += f"<b>Mode:</b> {self.mode}\n"
+        
+        if self.mode == 'package' and self.selected_packages:
+            message += f"<b>Monitoring:</b> {len(self.selected_packages)} package(s)\n"
+        
+        message += f"<b>Ignored Errors:</b> {len(self.ignored_errors)}\n\n"
+        message += f"<b>System:</b>\n<code>{load_avg}</code>"
+        
+        # Add refresh button
+        keyboard = {
+            "inline_keyboard": [
+                [{"text": "🔄 Refresh", "callback_data": "/alive"}],
+                [{"text": "📋 Full Status", "callback_data": "/status"}]
+            ]
+        }
+        
+        await self.send_telegram_message(message, reply_markup=keyboard)
+    
+    async def handle_callback(self, callback_query):
+        """Handle inline keyboard button presses"""
+        data = callback_query.get('data', '')
+        
+        # Answer the callback to remove loading state
+        await self.answer_callback(callback_query['id'])
+        
+        # Execute the command
+        if data == '/packages':
+            await self.cmd_packages()
+        elif data.startswith('/pm '):
+            await self.cmd_pm(data[4:])
+        elif data == '/nm':
+            await self.cmd_nm()
+        elif data == '/ignoring':
+            await self.cmd_ignoring()
+        elif data == '/alive':
+            await self.cmd_alive()
+        elif data == '/help':
+            await self.cmd_help()
+    
+    async def answer_callback(self, callback_id):
+        """Answer callback query to remove loading spinner"""
+        try:
+            import aiohttp
+            url = f"https://api.telegram.org/bot{self.bot_token}/answerCallbackQuery"
+            payload = {'callback_query_id': callback_id}
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, json=payload) as response:
+                    pass  # We don't care about the response
+        except:
+            pass  # Silently fail
     
     def get_journal_errors(self):
         """Get errors from systemd journal"""

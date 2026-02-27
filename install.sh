@@ -601,14 +601,54 @@ layout {
     }
 }
 
-# Window rules - disable blur for all windows
-windowrule = noblur, .*
-windowrule = noshadow, .*
+# Window rules - disable blur for all windows (new syntax)
+windowrule = match:class .*, noblur on
+windowrule = match:class .*, noshadow on
+
+# Keybindings
+$mainMod = SUPER
+
+bind = $mainMod, RETURN, exec, kitty
+bind = $mainMod, Q, killactive,
+bind = $mainMod, M, exit,
+bind = $mainMod, E, exec, thunar
+bind = $mainMod SHIFT, V, togglefloating,
+bind = $mainMod, D, exec, wofi --show drun
+bind = $mainMod, P, pseudo,
+bind = $mainMod, J, togglesplit,
+bind = $mainMod, L, exec, hyprlock
+
+bind = $mainMod, left, movefocus, l
+bind = $mainMod, right, movefocus, r
+bind = $mainMod, up, movefocus, u
+bind = $mainMod, down, movefocus, d
+
+bind = $mainMod, 1, workspace, 1
+bind = $mainMod, 2, workspace, 2
+bind = $mainMod, 3, workspace, 3
+bind = $mainMod, 4, workspace, 4
+bind = $mainMod, 5, workspace, 5
+
+bind = $mainMod SHIFT, 1, movetoworkspace, 1
+bind = $mainMod SHIFT, 2, movetoworkspace, 2
+bind = $mainMod SHIFT, 3, movetoworkspace, 3
+bind = $mainMod SHIFT, 4, movetoworkspace, 4
+bind = $mainMod SHIFT, 5, movetoworkspace, 5
+
+bindm = $mainMod, mouse:272, movewindow
+bindm = $mainMod, mouse:273, resizewindow
+
+# Window rules for floating apps
+windowrule = match:class ^(pavucontrol)$, float on
+windowrule = match:class ^(wofi)$, float on
 
 # Autostart
 exec-once = waybar
 exec-once = hyprpaper
 exec-once = mako
+exec-once = hypridle
+exec-once = wl-paste --type text --watch cliphist store
+exec-once = wl-paste --type image --watch cliphist store
 VMEOF
             echo -e "  ${GREEN}[OK] VM-optimized hyprland.conf installed${NC}"
         else
@@ -700,7 +740,8 @@ EOF
                     if ! grep -q "mpvpaper" ~/.config/hypr/hyprland.conf 2>/dev/null; then
                         echo "" >> ~/.config/hypr/hyprland.conf
                         echo "# Live video wallpaper (same as SDDM login)" >> ~/.config/hypr/hyprland.conf
-                        echo "exec-once = mpvpaper --auto-set --loop --vo=gpu --hwdec=auto --mute=yes --no-osc \"*\" \"$VIDEO_WALL\"" >> ~/.config/hypr/hyprland.conf
+                        echo "exec-once = mpvpaper --layer-background --loop --mpv-flags='--no-stop-screensaver --loop-file' \"*\" \"$VIDEO_WALL\"" >> ~/.config/hypr/hyprland.conf
+                        echo "layerrule = nofocus, mpvpaper" >> ~/.config/hypr/hyprland.conf
                         echo -e "  ${GREEN}[OK] Live video wallpaper enabled: $(basename "$VIDEO_WALL")${NC}"
                     fi
                 fi

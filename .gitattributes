@@ -9,6 +9,7 @@
 *.bash text eol=lf
 *.conf text eol=lf
 *.desktop text eol=lf
+hyprland.conf text eol=lf
 
 # Windows-specific files can keep CRLF
 *.cmd text eol=crlf

@@ -1,285 +1,194 @@
-# mydots - Cyberpunk Hyprland Rice
+# Custom Display Manager Ultimate Edition
 
-A fully dynamic, cyberpunk-themed Hyprland configuration with purple/pink aesthetics, animated wallpapers, system monitoring, and auto-detection for NVIDIA GPUs.
+A Python/Qt6-based display manager designed specifically for Hyprland with video wallpaper support, GPU optimization, and smooth animations.
 
-![Theme Preview](.config/hypr/wallpapers/dark-theme/dark-wall1.jpg)
+## Why Custom DM?
+
+| Feature | SDDM | Custom DM |
+|---------|------|-----------|
+| Fullscreen wallpaper | Black bars (aspect ratio) | True fullscreen stretch |
+| Video wallpapers | Limited | MPV-powered (efficient) |
+| GPU optimization | Generic | NVIDIA/AMD/Intel specific |
+| Animations | Basic | Smooth fade effects |
+| VM support | Sometimes broken | Optimized for VMware/VBox |
+| Test mode | No | Yes (--test) |
 
 ## Features
 
-- **Cyberpunk purple/pink color scheme** (Rose Pine inspired)
-- **Animated live wallpapers** from Google Drive
-- **Auto-detecting NVIDIA driver installer** - Works with all GPU generations
-- **Three install modes** - Fresh, Full, or Minimal installation
-- **System monitoring** (CPU, Memory, Disk, Network) in Waybar & btop
-- **Notification daemon** (mako) with cyberpunk styling
-- **Screenshot tools** (grim + slurp) with keybindings
-- **Clipboard history** (cliphist) with wofi picker
-- **Auto-lock** (hypridle) after idle time
-- **SDDM display manager** with astronaut theme
-- **Smooth animations** and blur effects
-- **PipeWire audio** (modern replacement for PulseAudio)
+- ✅ **True fullscreen wallpaper** (no black bars)
+- ✅ **Video wallpaper support** via mpv (MP4, WebM)
+- ✅ **GPU-optimized**: NVIDIA, AMD, Intel specific settings
+- ✅ **Smooth animations**: Fade in effects
+- ✅ **Rose Pine cyberpunk theme** (purple/pink/cyan)
+- ✅ **PAM authentication** with session management
+- ✅ **Multi-session support** (Hyprland, KDE, GNOME, Sway)
+- ✅ **Test mode**: Preview without installing
+- ✅ **VM support**: VMware, VirtualBox, QEMU
 
-## Quick Start
+## Installation
 
-### Fresh Arch Linux Install (Terminal Only)
-
+### Standard Install
 ```bash
-# 1. Install git
-sudo pacman -S git
-
-# 2. Clone and install
-git clone https://github.com/iceyxsm/mydots.git
-cd mydots
-chmod +x install.sh
-./install.sh        # Default: Full install
-
-# 3. Reboot
-sudo reboot
+sudo ./install-custom-dm.sh
 ```
 
-## Install Modes
-
-The installer supports three modes for different needs:
-
-### `--finstall` - Fresh Install (Nuclear Option)
-**[WARNING]**: This deletes everything and starts fresh!
-
+### Test Mode (Preview without installing)
 ```bash
-./install.sh --finstall
+sudo ./install-custom-dm.sh --test
 ```
 
-- Removes ALL packages except base, git, pacman, yay
-- Deletes all configs in `~/.config/`
-- Cleans themes, icons, wallpapers
-- Installs everything fresh
-- Type `NUKE` to confirm
-
-### `-finstall` - Full Install (Default)
-[FULL] Standard installation with backup.
-
+### Lock Mode (Screen lock replacement)
 ```bash
-./install.sh -finstall    # or just ./install.sh
+sudo ./install-custom-dm.sh --lock
 ```
 
-- Backs up existing configs (timestamped)
-- Installs all packages
-- Copies all cyberpunk configs
-- Downloads live wallpapers
-- Perfect for first-time setup
+## Usage
 
-### `-minstall` - Minimal Install
-[MINIMAL] Preserves existing setup, only adds missing.
-
+Start the DM:
 ```bash
-./install.sh -minstall
+sudo systemctl start custom-dm
 ```
 
-- Keeps existing packages and configs
-- Only installs missing packages
-- Skips wallpaper download
-- Great for updates or fixing missing tools
+Check logs:
+```bash
+sudo journalctl -u custom-dm -f
+```
 
-## What's Included
-
-### Core Components
-| Component | Purpose |
-|-----------|---------|
-| **Hyprland** | Wayland compositor with animations |
-| **Waybar** | Status bar with system monitoring |
-| **Kitty** | GPU-accelerated terminal |
-| **SDDM** | Display manager with astronaut theme |
-| **Hyprpaper** | Wallpaper daemon |
-| **Hyprlock** | Lock screen (SUPER+L) |
-| **Hypridle** | Auto-lock after idle |
-
-### System Tools
-| Tool | Purpose |
-|------|---------|
-| **btop** | System resource monitor |
-| **neofetch** | System info display |
-| **mako** | Notification daemon |
-| **grim + slurp** | Screenshots |
-| **cliphist** | Clipboard history |
-| **wofi** | Application launcher |
-| **thunar** | File manager |
-| **pavucontrol** | Audio control |
-
-### GPU Support
-
-**Auto-detected and installed:**
-
-| GPU Series | Driver Installed |
-|------------|------------------|
-| RTX 5000 (Blackwell) | `nvidia-open-dkms` |
-| RTX 4000 (Ada) | `nvidia-open-dkms` |
-| RTX 3000/2000 (Ampere/Turing) | `nvidia-dkms` |
-| GTX 1000/900 (Pascal/Maxwell) | `nvidia-dkms` |
-| GTX 600/700 (Kepler) | `nvidia-470xx-dkms` (AUR) |
-| Intel/AMD | `mesa` + `vulkan` |
-
-## Keybindings
-
-### Window Management
-| Keybind | Action |
-|---------|--------|
-| `SUPER + Return` | Open terminal (kitty) |
-| `SUPER + Q` | Close window |
-| `SUPER + M` | Exit Hyprland |
-| `SUPER + V` | Toggle floating |
-| `SUPER + D` | App launcher (wofi) |
-| `SUPER + E` | File manager (thunar) |
-
-### Navigation
-| Keybind | Action |
-|---------|--------|
-| `SUPER + Arrow Keys` | Move focus |
-| `SUPER + 1-5` | Switch workspace |
-| `SUPER + SHIFT + 1-5` | Move window to workspace |
-| `SUPER + Mouse Left` | Move window |
-| `SUPER + Mouse Right` | Resize window |
-
-### Utilities
-| Keybind | Action |
-|---------|--------|
-| `SUPER + L` | Lock screen (hyprlock) |
-| `SUPER + Print` | Screenshot (full screen) |
-| `SUPER + SHIFT + S` | Screenshot (region) |
-| `SUPER + V` | Clipboard history picker |
+Test without installing:
+```bash
+sudo ./install-custom-dm.sh --test
+```
 
 ## Configuration
 
-All configs are in `~/.config/`:
+### Video Wallpapers (Auto-Detected)
 
-```
-~/.config/
-├── hypr/
-│   ├── hyprland.conf      # Main compositor config
-│   ├── hyprpaper.conf     # Wallpaper config
-│   ├── hyprlock.conf      # Lock screen config
-│   ├── hypridle.conf      # Auto-lock config
-│   └── wallpapers/        # All wallpapers
-│       ├── live-wallpapers/
-│       ├── dark-theme/
-│       └── light-theme/
-├── waybar/
-│   ├── config             # Bar modules
-│   └── style.css          # Cyberpunk styling
-├── kitty/
-│   └── kitty.conf         # Terminal config
-├── btop/
-│   ├── btop.conf
-│   └── themes/cyberpunk.theme
-├── mako/
-│   └── config             # Notifications
-└── neofetch/
-    └── config.conf
-```
+Videos are **automatically detected** from the Google Drive downloaded wallpapers folder:
 
-## Theme Colors
+**Primary location (scanned automatically):**
+- `~/.config/hypr/wallpapers/live-wallpapers/*.mp4`
+- `~/.config/hypr/wallpapers/live-wallpapers/*.webm`
 
-Rose Pine cyberpunk palette:
+**Any video file** in the downloaded folder will be used as the login background!
 
-| Color | Hex | Usage |
-|-------|-----|-------|
-| **Purple** | `#c4a7e7` | Primary accent |
-| **Pink** | `#eb6f92` | Secondary accent |
-| **Cyan** | `#9ccfd8` | Highlights, CPU |
-| **Yellow** | `#f6c177` | Memory, battery |
-| **Background** | `#191724` | Dark bg |
-| **Foreground** | `#e0def4` | Text |
+**Fallback locations:**
+- `~/.config/hypr/wallpapers/background.mp4`
+- `/usr/share/sddm/themes/sddm-astronaut-theme/background.mp4`
 
-## Post-Installation
+**Supported formats:** MP4, WebM, MKV, MOV, AVI  
+**Audio:** Automatically muted  
+**Loop:** Infinite loop enabled  
+**Decoder:** Hardware-accelerated (NVIDIA/AMD/Intel)
 
-### Connect to WiFi
-```bash
-nmtui              # TUI network manager
-# or click network icon in Waybar
-```
+### Static Wallpapers (Fallback)
+If no video is found, falls back to static images **from Google Drive downloads**:
+- `~/.config/hypr/wallpapers/live-wallpapers/*.jpg` (auto-detected)
+- `~/.config/hypr/wallpapers/live-wallpapers/*.png` (auto-detected)
+- `/usr/share/sddm/themes/sddm-astronaut-theme/background.jpg`
+- `~/.config/hypr/wallpapers/dark-theme/dark-wall1.jpg`
 
-### Test the setup
-```bash
-btop               # System monitor
-neofetch           # System info
-hyprctl version    # Hyprland version
-nvidia-smi         # If NVIDIA GPU
-```
+### Sessions
+The DM reads available sessions from:
+- `/usr/share/wayland-sessions`
+- `/usr/share/xsessions`
 
-### Change wallpaper
-Edit `~/.config/hypr/hyprpaper.conf`:
-```bash
-preload = ~/.config/hypr/wallpapers/dark-theme/dark-wall1.jpg
-wallpaper = ,~/.config/hypr/wallpapers/dark-theme/dark-wall1.jpg
-```
+Hyprland is automatically selected by default if available.
+
+## Hardware Support
+
+### NVIDIA GPUs
+- Hardware video decoding via VDPAU
+- Optimal mpv settings for NVIDIA
+
+### AMD GPUs
+- VA-API hardware acceleration
+- RadeonSI driver optimization
+
+### Intel GPUs
+- VA-API with i965 driver
+- Integrated graphics optimized
+
+### Virtual Machines
+- VMware SVGA support
+- VirtualBox VMSVGA support
+- QEMU virtio support
+- Software rendering fallback
 
 ## Troubleshooting
 
-### No WiFi
+### DM won't start
+Check logs:
 ```bash
-# Enable NetworkManager
-sudo systemctl enable --now NetworkManager
-
-# Check WiFi device
-iw dev
+sudo journalctl -u custom-dm -n 100
 ```
 
-### No audio
-```bash
-# Check PipeWire status
-systemctl --user status pipewire
+### Video wallpaper not playing
+1. Check mpv is installed: `which mpv`
+2. Check video format: MP4 or WebM
+3. Check logs for errors: `sudo journalctl -u custom-dm -f`
 
-# Restart audio
-systemctl --user restart pipewire pipewire-pulse wireplumber
+### Authentication fails
+Ensure PAM is configured:
+```bash
+sudo pamac check
 ```
 
-### NVIDIA issues
+### Session doesn't start
+1. Verify Hyprland binary exists: `which Hyprland`
+2. Check session file: `cat /usr/share/wayland-sessions/hyprland.desktop`
+
+### Back to SDDM
 ```bash
-# Check if driver loaded
-nvidia-smi
-
-# Check logs
-sudo dmesg | grep -i nvidia
-
-# For manual install
-./install-nvidia.sh
+sudo systemctl stop custom-dm
+sudo systemctl disable custom-dm
+sudo systemctl enable sddm
+sudo systemctl start sddm
 ```
 
-### Waybar not showing
-```bash
-killall waybar
-waybar &
-```
+## Technical Details
 
-### Wallpapers not loading
-```bash
-# Manual download
-# Link: https://drive.google.com/drive/folders/1oS6aUxoW6DGoqzu_S3pVBlgicGPgIoYq
-# Place in: ~/.config/hypr/wallpapers/live-wallpapers/
-```
+### Video Playback
+Uses **mpv** for video wallpapers instead of Qt Multimedia:
+- More efficient CPU/GPU usage
+- Better format support
+- Hardware decoding support
+- Loop seamlessly
 
-## Scripts
+### GPU Detection
+Automatically detects GPU type and sets optimal environment variables:
+- NVIDIA: `VDPAU_DRIVER=nvidia`
+- AMD: `LIBVA_DRIVER_NAME=radeonsi`
+- Intel: `LIBVA_DRIVER_NAME=i965`
 
-| Script | Purpose |
-|--------|---------|
-| `install.sh` | Main installer (3 modes) |
-| `install-nvidia.sh` | Standalone NVIDIA installer |
+### Animations
+Smooth fade-in animation for login panel using QPropertyAnimation.
 
-## Requirements
+### PAM Integration
+- Uses `service="login"` for authentication
+- Calls `pam.open_session()` on successful login
+- Calls `pam.close_session()` on session exit
 
-- Arch Linux (or Arch-based distro)
-- Internet connection
-- `sudo` access
-- Git
+### Process Model
+1. DM runs as root (systemd service)
+2. User authenticates via PAM
+3. Fork child process, drop privileges with `setgid/initgroups/setuid`
+4. Child calls `setsid()` to create new session
+5. Exec Hyprland with proper environment
+6. Parent monitors PID, restarts DM when session exits
 
-## Credits
-
-- Color scheme: [Rose Pine](https://rosepinetheme.com/)
-- Inspiration: [StealthIQ/dotfiles](https://github.com/StealthIQ/dotfiles)
-- Hyprland: [hyprland.org](https://hyprland.org/)
+### Environment Variables Set
+- `XDG_SESSION_TYPE=wayland`
+- `XDG_CURRENT_DESKTOP=Hyprland`
+- `XDG_SESSION_DESKTOP=Hyprland`
+- `XDG_SEAT=seat0`
+- `XDG_VTNR=1`
+- `XDG_RUNTIME_DIR=/run/user/<uid>`
+- `WAYLAND_DISPLAY=wayland-1`
+- `MOZ_ENABLE_WAYLAND=1`
+- `QT_QPA_PLATFORM=wayland`
+- `LIBVA_DRIVER_NAME` (GPU-specific)
+- `VDPAU_DRIVER` (GPU-specific)
 
 ## License
 
-MIT - Do whatever you want with this.
-
----
-
-**Enjoy your cyberpunk rice!**
+Same as the main mydots project.

@@ -1,0 +1,16 @@
+[Unit]
+Description=Hyprland Error Monitor Bot
+After=hyprland-session.target
+Wants=hyprland-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/.config/hypr/scripts/start-error-bot.sh
+Restart=always
+RestartSec=10
+Environment="PATH=%h/.config/hypr/monitor-bot/venv/bin:/usr/bin"
+Environment="HOME=%h"
+Environment="XDG_CONFIG_HOME=%h/.config"
+
+[Install]
+WantedBy=default.target

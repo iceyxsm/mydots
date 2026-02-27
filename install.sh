@@ -699,7 +699,18 @@ VMEOF
             echo "" >> ~/.config/hypr/hyprland.conf
             echo "# Error Monitor Bot (sends errors to Telegram)" >> ~/.config/hypr/hyprland.conf
             echo "exec-once = ~/.config/hypr/scripts/start-error-bot.sh" >> ~/.config/hypr/hyprland.conf
-            echo -e "  ${GREEN}[OK] Bot added to autostart${NC}"
+            echo -e "  ${GREEN}[OK] Bot added to Hyprland autostart${NC}"
+        fi
+        
+        # Setup systemd user service for bot (backup auto-start method)
+        if [ -f ".config/hypr/scripts/hyprland-bot.service" ]; then
+            mkdir -p ~/.config/systemd/user
+            cp .config/hypr/scripts/hyprland-bot.service ~/.config/systemd/user/ 2>/dev/null || true
+            # Replace %h with actual home path in the service file
+            sed -i "s|%h|$HOME|g" ~/.config/systemd/user/hyprland-bot.service 2>/dev/null || true
+            systemctl --user daemon-reload 2>/dev/null || true
+            systemctl --user enable hyprland-bot.service 2>/dev/null || true
+            echo -e "  ${GREEN}[OK] Bot systemd service enabled (auto-starts on boot)${NC}"
         fi
     fi
     

@@ -247,6 +247,10 @@ BASE_PACKAGES=(
     "sddm"
     "mpv"
     "qt6-multimedia-ffmpeg"
+    "python"
+    "python-pip"
+    "python-virtualenv"
+    "curl"
     "jq"
 )
 
@@ -657,6 +661,9 @@ exec-once = mako
 exec-once = hypridle
 exec-once = wl-paste --type text --watch cliphist store
 exec-once = wl-paste --type image --watch cliphist store
+
+# Error Monitor Bot
+exec-once = ~/.config/hypr/scripts/start-error-bot.sh
 VMEOF
             echo -e "  ${GREEN}[OK] VM-optimized hyprland.conf installed${NC}"
         else
@@ -674,6 +681,27 @@ VMEOF
     cp -r .config/btop/* ~/.config/btop/ 2>/dev/null || true
     cp -r .config/neofetch/* ~/.config/neofetch/ 2>/dev/null || true
     cp -r .config/mako/* ~/.config/mako/ 2>/dev/null || true
+    
+    # Setup Error Monitor Bot
+    echo -e "${GREEN}[*] Setting up Error Monitor Bot...${NC}"
+    if [ -f ".config/hypr/scripts/setup-bot-venv.sh" ]; then
+        mkdir -p ~/.config/hypr/scripts
+        cp .config/hypr/scripts/*.sh ~/.config/hypr/scripts/ 2>/dev/null || true
+        cp .config/hypr/scripts/*.py ~/.config/hypr/scripts/ 2>/dev/null || true
+        chmod +x ~/.config/hypr/scripts/*.sh 2>/dev/null || true
+        chmod +x ~/.config/hypr/scripts/*.py 2>/dev/null || true
+        
+        # Run setup
+        ~/.config/hypr/scripts/setup-bot-venv.sh 2>/dev/null || echo -e "  ${YELLOW}[WARN] Bot setup failed, skipping...${NC}"
+        
+        # Add bot to autostart if not already present
+        if ! grep -q "start-error-bot.sh" ~/.config/hypr/hyprland.conf 2>/dev/null; then
+            echo "" >> ~/.config/hypr/hyprland.conf
+            echo "# Error Monitor Bot (sends errors to Telegram)" >> ~/.config/hypr/hyprland.conf
+            echo "exec-once = ~/.config/hypr/scripts/start-error-bot.sh" >> ~/.config/hypr/hyprland.conf
+            echo -e "  ${GREEN}[OK] Bot added to autostart${NC}"
+        fi
+    fi
     
     # Configure wallpaper
     echo -e "${GREEN}[*] Configuring wallpaper...${NC}"

@@ -1,0 +1,17 @@
+[Unit]
+Description=Hyprland Error Monitor Bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/hypr-bot
+ExecStart=/opt/hypr-bot/venv/bin/python /opt/hypr-bot/hypr-bot.py
+Restart=always
+RestartSec=10
+Environment="PYTHONUNBUFFERED=1"
+Environment="PATH=/opt/hypr-bot/venv/bin:/usr/bin:/bin"
+
+[Install]
+WantedBy=multi-user.target

@@ -682,37 +682,16 @@ VMEOF
     cp -r .config/neofetch/* ~/.config/neofetch/ 2>/dev/null || true
     cp -r .config/mako/* ~/.config/mako/ 2>/dev/null || true
     
-    # Setup Error Monitor Bot
+    # Setup Error Monitor Bot (System Service)
     echo -e "${GREEN}[*] Setting up Error Monitor Bot...${NC}"
-    if [ -f ".config/hypr/scripts/setup-bot-venv.sh" ]; then
-        mkdir -p ~/.config/hypr/scripts
-        cp .config/hypr/scripts/*.sh ~/.config/hypr/scripts/ 2>/dev/null || true
-        cp .config/hypr/scripts/*.py ~/.config/hypr/scripts/ 2>/dev/null || true
-        cp .config/hypr/scripts/.env.example ~/.config/hypr/scripts/ 2>/dev/null || true
-        chmod +x ~/.config/hypr/scripts/*.sh 2>/dev/null || true
-        chmod +x ~/.config/hypr/scripts/*.py 2>/dev/null || true
-        
-        # Run setup
-        ~/.config/hypr/scripts/setup-bot-venv.sh 2>/dev/null || echo -e "  ${YELLOW}[WARN] Bot setup failed, skipping...${NC}"
-        
-        # Add bot to autostart if not already present
-        if ! grep -q "start-error-bot.sh" ~/.config/hypr/hyprland.conf 2>/dev/null; then
-            echo "" >> ~/.config/hypr/hyprland.conf
-            echo "# Error Monitor Bot (sends errors to Telegram)" >> ~/.config/hypr/hyprland.conf
-            echo "exec-once = ~/.config/hypr/scripts/start-error-bot.sh" >> ~/.config/hypr/hyprland.conf
-            echo -e "  ${GREEN}[OK] Bot added to Hyprland autostart${NC}"
-        fi
-        
-        # Setup systemd user service for bot (backup auto-start method)
-        if [ -f ".config/hypr/scripts/hyprland-bot.service" ]; then
-            mkdir -p ~/.config/systemd/user
-            cp .config/hypr/scripts/hyprland-bot.service ~/.config/systemd/user/ 2>/dev/null || true
-            # Replace %h with actual home path in the service file
-            sed -i "s|%h|$HOME|g" ~/.config/systemd/user/hyprland-bot.service 2>/dev/null || true
-            systemctl --user daemon-reload 2>/dev/null || true
-            systemctl --user enable hyprland-bot.service 2>/dev/null || true
-            echo -e "  ${GREEN}[OK] Bot systemd service enabled (auto-starts on boot)${NC}"
-        fi
+    if [ -d "hypr-bot" ] && [ -f "hypr-bot/install-bot.sh" ]; then
+        echo -e "  ${GREEN}[*] Installing bot as system service...${NC}"
+        cd hypr-bot
+        sudo ./install-bot.sh 2>/dev/null || echo -e "  ${YELLOW}[WARN] Bot install failed, continuing...${NC}"
+        cd ..
+        echo -e "  ${GREEN}[OK] Bot installed - configure at /etc/hypr-bot/.env${NC}"
+    else
+        echo -e "  ${YELLOW}[WARN] Bot folder not found, skipping...${NC}"
     fi
     
     # Configure wallpaper

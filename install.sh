@@ -836,10 +836,52 @@ echo -e "${CYAN}     Telegram Error Bot Setup${NC}"
 echo -e "${CYAN}========================================${NC}"
 echo ""
 
-read -p "Setup Telegram error monitoring bot? (Y/n): " setup_bot
-SETUP_BOT=${setup_bot:-y}
+# Check if bot config already exists
+BOT_ENV_FILE="/etc/hypr-bot/.env"
+if [ -f "$BOT_ENV_FILE" ]; then
+    echo -e "${GREEN}[OK] Existing bot config found at $BOT_ENV_FILE${NC}"
+    
+    # Load existing credentials
+    EXISTING_TOKEN=$(grep "TELEGRAM_BOT_TOKEN" "$BOT_ENV_FILE" | cut -d'=' -f2)
+    EXISTING_CHAT_ID=$(grep "TELEGRAM_CHAT_ID" "$BOT_ENV_FILE" | cut -d'=' -f2)
+    
+    if [ -n "$EXISTING_TOKEN" ] && [ -n "$EXISTING_CHAT_ID" ]; then
+        echo -e "${GREEN}[OK] Using existing bot configuration${NC}"
+        echo ""
+        read -p "Use existing config or reconfigure? (use/reconfigure): " bot_choice
+        
+        if [ "$bot_choice" = "reconfigure" ] || [ "$bot_choice" = "r" ]; then
+            echo -e "${YELLOW}[!] Will reconfigure bot with new credentials${NC}"
+            SETUP_BOT="y"
+        else
+            echo -e "${GREEN}[OK] Keeping existing configuration${NC}"
+            SETUP_BOT="existing"
+        fi
+    else
+        echo -e "${YELLOW}[!] Existing config incomplete, need to reconfigure${NC}"
+        SETUP_BOT="y"
+    fi
+else
+    read -p "Setup Telegram error monitoring bot? (Y/n): " setup_bot
+    SETUP_BOT=${setup_bot:-y}
+fi
 
-if [ "$SETUP_BOT" = "y" ] || [ "$SETUP_BOT" = "Y" ]; then
+# Handle existing config (skip prompts, just install)
+if [ "$SETUP_BOT" = "existing" ]; then
+    echo -e "${GREEN}[*] Installing bot with existing configuration...${NC}"
+    if [ -d "hypr-bot" ] && [ -f "hypr-bot/install-bot.sh" ]; then
+        cd hypr-bot
+        sudo ./install-bot.sh 2>/dev/null
+        cd ..
+        
+        # Start the bot
+        sudo systemctl start hypr-bot 2>/dev/null || true
+        
+        echo -e "${GREEN}[OK] Bot installed and started with existing config!${NC}"
+    fi
+
+# Normal setup flow
+elif [ "$SETUP_BOT" = "y" ] || [ "$SETUP_BOT" = "Y" ]; then
     echo -e "${CYAN}[*] Bot Setup Instructions:${NC}"
     echo ""
     echo "1. Open Telegram and search for @BotFather"

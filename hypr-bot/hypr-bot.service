@@ -1,6 +1,6 @@
 [Unit]
-Description=Hyprland Error Monitor Bot
-After=network-online.target
+Description=System Error Monitor Bot
+After=network-online.target systemd-journald.service
 Wants=network-online.target
 
 [Service]
@@ -12,6 +12,8 @@ Restart=always
 RestartSec=10
 Environment="PYTHONUNBUFFERED=1"
 Environment="PATH=/opt/hypr-bot/venv/bin:/usr/bin:/bin"
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target

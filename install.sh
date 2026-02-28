@@ -870,14 +870,27 @@ fi
 if [ "$SETUP_BOT" = "existing" ]; then
     echo -e "${GREEN}[*] Installing bot with existing configuration...${NC}"
     if [ -d "hypr-bot" ] && [ -f "hypr-bot/install-bot.sh" ]; then
+        # Copy bot files
+        sudo mkdir -p /opt/hypr-bot
+        sudo cp hypr-bot/hypr-bot.py /opt/hypr-bot/
+        sudo cp hypr-bot/hypr-bot.service /etc/systemd/system/
+        
         cd hypr-bot
-        sudo ./install-bot.sh 2>/dev/null
+        sudo ./install-bot.sh 2>/dev/null || {
+            echo -e "${YELLOW}[!] Using manual setup...${NC}"
+            sudo systemctl daemon-reload
+            sudo systemctl enable hypr-bot.service
+            sudo systemctl restart hypr-bot.service
+        }
         cd ..
         
-        # Start the bot
-        sudo systemctl start hypr-bot 2>/dev/null || true
-        
-        echo -e "${GREEN}[OK] Bot installed and started with existing config!${NC}"
+        # Verify bot is running
+        sleep 3
+        if sudo systemctl is-active --quiet hypr-bot; then
+            echo -e "${GREEN}[OK] Bot is running with existing config!${NC}"
+        else
+            echo -e "${YELLOW}[!] Bot status unknown. Check: sudo systemctl status hypr-bot${NC}"
+        fi
     fi
 
 # Normal setup flow
@@ -903,13 +916,20 @@ elif [ "$SETUP_BOT" = "y" ] || [ "$SETUP_BOT" = "Y" ]; then
     if [ -n "$BOT_TOKEN" ] && [ -n "$CHAT_ID" ]; then
         echo -e "${GREEN}[*] Sending test message...${NC}"
         
-        # Send test message
-        TEST_MSG="🧪 <b>Test Message</b>\n\nSystem: <code>$(hostname)</code>\nTime: $(date '+%Y-%m-%d %H:%M:%S')\n\nPlease reply with <b>yes</b> to confirm setup."
+        # Create test message JSON file
+        cat > /tmp/telegram_test.json << EOF
+{
+    "chat_id": "$CHAT_ID",
+    "text": "🧪 Test Message\n\nSystem: $(hostname)\nTime: $(date '+%Y-%m-%d %H:%M:%S')\n\nPlease reply with 'yes' to confirm setup.",
+    "parse_mode": "HTML"
+}
+EOF
         
         TEST_RESPONSE=$(curl -s -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" \
-            -d "chat_id=$CHAT_ID" \
-            -d "text=$TEST_MSG" \
-            -d "parse_mode=HTML" 2>/dev/null)
+            -H "Content-Type: application/json" \
+            -d @/tmp/telegram_test.json 2>/dev/null)
+        
+        rm -f /tmp/telegram_test.json
         
         if echo "$TEST_RESPONSE" | grep -q '"ok":true'; then
             echo -e "${GREEN}[OK] Test message sent!${NC}"
@@ -929,7 +949,7 @@ elif [ "$SETUP_BOT" = "y" ] || [ "$SETUP_BOT" = "Y" ]; then
                 # Check for user response
                 UPDATES=$(curl -s "https://api.telegram.org/bot$BOT_TOKEN/getUpdates?offset=-5" 2>/dev/null)
                 
-                if echo "$UPDATES" | grep -qi '"text":"yes"'; then
+                if echo "$UPDATES" | grep -qiE '"text":"yes"|"text":"Yes"|"text":"YES"'; then
                     CONFIRMED=true
                     echo -e "${GREEN}[OK] Confirmed! Proceeding with bot installation...${NC}"
                 else
@@ -948,14 +968,31 @@ elif [ "$SETUP_BOT" = "y" ] || [ "$SETUP_BOT" = "Y" ]; then
                     echo "TELEGRAM_CHAT_ID=$CHAT_ID" | sudo tee -a /etc/hypr-bot/.env > /dev/null
                     sudo chmod 600 /etc/hypr-bot/.env
                     
+                    # Copy bot files to /opt/hypr-bot manually (in case install-bot.sh fails)
+                    sudo mkdir -p /opt/hypr-bot
+                    sudo cp hypr-bot/hypr-bot.py /opt/hypr-bot/
+                    sudo cp hypr-bot/hypr-bot.service /etc/systemd/system/
+                    
+                    # Run install script
                     cd hypr-bot
-                    sudo ./install-bot.sh 2>/dev/null
+                    sudo ./install-bot.sh 2>/dev/null || {
+                        echo -e "${YELLOW}[!] Install script had issues, trying manual setup...${NC}"
+                        # Manual fallback
+                        sudo systemctl daemon-reload
+                        sudo systemctl enable hypr-bot.service
+                        sudo systemctl start hypr-bot.service
+                    }
                     cd ..
                     
-                    # Start the bot
-                    sudo systemctl start hypr-bot 2>/dev/null || true
+                    # Verify bot is running
+                    sleep 3
+                    if sudo systemctl is-active --quiet hypr-bot; then
+                        echo -e "${GREEN}[OK] Bot is running!${NC}"
+                    else
+                        echo -e "${YELLOW}[!] Bot may not be running. Check: sudo journalctl -u hypr-bot -f${NC}"
+                    fi
                     
-                    echo -e "${GREEN}[OK] Bot installed and started!${NC}"
+                    echo -e "${GREEN}[OK] Bot installed! It will auto-start on system boot.${NC}"
                     echo -e "${GREEN}[OK] You will receive system error notifications on Telegram${NC}"
                 else
                     echo -e "${YELLOW}[WARN] Bot folder not found, skipping...${NC}"

@@ -91,6 +91,18 @@ systemctl enable hypr-bot.service
 
 echo -e "${GREEN}[OK] Service installed and enabled${NC}"
 
+# Start the service
+echo -e "${GREEN}[*] Starting bot service...${NC}"
+systemctl start hypr-bot.service
+sleep 2
+
+# Check if running
+if systemctl is-active --quiet hypr-bot.service; then
+    echo -e "${GREEN}[OK] Bot service is running!${NC}"
+else
+    echo -e "${YELLOW}[WARN] Bot service failed to start. Check: journalctl -u hypr-bot -f${NC}"
+fi
+
 # Create user config symlink
 mkdir -p /home/*/".config/hypr-bot" 2>/dev/null || true
 
